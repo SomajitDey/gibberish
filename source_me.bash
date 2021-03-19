@@ -1,4 +1,4 @@
-export GBRS_DIR="${HOME}/.GiBaReSh"
+export GBRS_DIR="${GBRS_DIR:="${HOME}/.GiBaReSh"}"
 
 GBRS_filesys(){
   export incoming_dir="${GBRS_DIR}/incoming"
