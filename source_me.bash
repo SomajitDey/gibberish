@@ -20,7 +20,7 @@ export -f GBRS_fetchd
 
 GBRS_checkoutd(){
   cd "${incoming_dir}"
-  ln -sf "./${hook}" "${GIT_DIR}/hooks/post-checkout"  
+  [[ -e "./${hook}" ]] && ln -sf "./${hook}" "${GIT_DIR}/hooks/post-checkout"
   local commit
   while true;do
     for commit in "$(git rev-list HEAD..origin/${fetch_branch})"; do

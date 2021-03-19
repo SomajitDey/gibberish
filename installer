@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 command -v git &>/dev/null || (echo 'Install git' ; exit)
+code_dir="${BASH_SOURCE%/*}"
+. "${code_dir}/source_me.bash"
+rm -rf "${GBRS_DIR}"
 
 echo 'You already have a repository in cloud, right?
 If not, create one at any of the following for free:
@@ -9,29 +12,28 @@ github.com, gitlab.com, sourceforge.net, bitbucket.org
 read -ep 'URL: ' url
 [[ -z "${url}" ]] && exit
 uri="${url#*:\/\/}"
-protocol="${url%:\/\/*}://"
+protocol="${url%:\/\/*}"
 
-if [[ "${protocol}" == "file://" ]] || [[ -n "${protocol}" ]]; then
+if [[ "${protocol}" == "file" ]] || [[ -n "${protocol}" ]]; then
   fetch_url="${uri}"
+  push_url="${uri}"
   localhost="true"
 else
   fetch_url="git://${uri}"
   localhost="false"
 fi
 
-if [[ "${protocol}" == "ssh://" ]]; then
+if [[ "${protocol}" == "ssh" ]]; then
   echo 'No support for ssh yet. Lets use https.'
-  protocol="https://"
+  protocol="https"
 fi
 
-if [[ "${protocol}" == "https://" ]]; then
+if [[ "${protocol}" == "https" ]]; then
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
   tput cuu1; tput el1; echo 'Got your passwd.'
-  protocol="https://${uid}:${pass}@"
+  push_url="https://${uid}:${pass}@${uri}"
 fi
-
-push_url="${protocol}${uri}"
 
 echo 'You shall be using this PC as'
 read -p '1. Server 2. Client: ' -n1 choice
@@ -50,24 +52,20 @@ if ! "${localhost}"; then
 fi
 
 echo "Configuring ${config}..."
-
-code_dir="${BASH_SOURCE%/*}"
-. "${code_dir}/source_me.bash"
 GBRS_filesys
-
 mkdir -p "${GBRS_DIR}"
 touch "${interface}"
 
-(
-set -o errexit
-git clone --verbose --bare "${fetch_url}" "${GIT_DIR}"
+git clone --bare "${fetch_url}" "${GIT_DIR}"
 git remote set-url --push origin "${push_url}"
-git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}" \
-|| git worktree add -b "${talkto}" "${outgoing_dir}"
-cd "${outgoing_dir}"
-echo '#!/usr/bin/env bash' > "${hook}" ; chmod +x "${hook}"
-GBRS_commit
+git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null \
+|| \
+(git worktree add -b "${talkto}" "${outgoing_dir}" &>/dev/null
 git push -u origin "${talkto}"
-ln "${code_dir}/post-commit" "${GIT_DIR}/hooks/post-commit"
-git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
 )
+git worktree add "${incoming_dir}" "${config}" &>/dev/null \
+|| \
+(git worktree add -b "${config}" "${incoming_dir}" &>/dev/null
+git push -u origin "${config}"
+)
+ln "${code_dir}/post-commit" "${GIT_DIR}/hooks/post-commit"
