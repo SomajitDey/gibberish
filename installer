@@ -13,8 +13,10 @@ protocol="${url%:\/\/*}://"
 
 if [[ "${protocol}" == "file://" ]] || [[ -n "${protocol}" ]]; then
   fetch_url="${uri}"
+  localhost="true"
 else
   fetch_url="git://${uri}"
+  localhost="false"
 fi
 
 if [[ "${protocol}" == "ssh://" ]]; then
@@ -37,13 +39,15 @@ while true;do
   case "${choice}" in
     1)config="server"; talkto="client"; break;;
     2)config="client"; talkto="server"; break;;
-    *)read -p 'Type either 1 or 2:' -n1 choice;;
+    *)read -p 'Type either 1 or 2: ' -n1 choice;;
   esac
 done
-
 echo
-echo 'Make sure you are connected to internet. Press any key after that.'
-read -sn1
+
+if "${localhost}"; then
+  echo 'Make sure you are connected to internet. Press any key after that.'
+  read -sn1
+fi
 
 echo "Configuring ${config}..."
 
