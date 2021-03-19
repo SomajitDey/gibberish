@@ -55,6 +55,7 @@ ln "${code_dir}/${post-commit}" "${GIT_DIR}/hooks/post-commit"
 git remote set-url --push origin "${push_url}"
 git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
 git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}"
-echo '#!/usr/bin/env bash' > "${outgoing_dir}/${hook}"
+cd "${outgoing_dir}"
+echo '#!/usr/bin/env bash' > "${hook}" ; chmod +x "${hook}"
 GBRS_commit
 )
