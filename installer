@@ -34,7 +34,7 @@ fi
 push_url="${protocol}${uri}"
 
 echo 'You shall be using this PC as'
-read -p '1. Server 2. Client:' -n1 choice
+read -p '1. Server 2. Client: ' -n1 choice
 while true;do
   case "${choice}" in
     1)config="server"; talkto="client"; break;;
@@ -44,7 +44,7 @@ while true;do
 done
 echo
 
-if "${localhost}"; then
+if ! "${localhost}"; then
   echo 'Make sure you are connected to internet. Press any key after that.'
   read -sn1
 fi
@@ -62,11 +62,12 @@ touch "${interface}"
 set -o errexit
 git clone --verbose --bare "${fetch_url}" "${GIT_DIR}"
 git remote set-url --push origin "${push_url}"
-git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
-git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}"
+git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}" \
+|| git worktree add -b "${talkto}" "${outgoing_dir}"
 cd "${outgoing_dir}"
 echo '#!/usr/bin/env bash' > "${hook}" ; chmod +x "${hook}"
 GBRS_commit
 git push -u origin "${talkto}"
 ln "${code_dir}/post-commit" "${GIT_DIR}/hooks/post-commit"
+git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
 )
