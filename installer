@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Configure repo
+# Fetch-protocol: git://
+# Push-protocol: https://

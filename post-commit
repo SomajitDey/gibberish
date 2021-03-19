@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+lock="${GBRS_dir}/push.lock"
+flock -x "${lock}" git push --quiet origin &
