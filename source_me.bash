@@ -42,8 +42,8 @@ export -f GBRS_commit
 
 gbrsd(){
   GBRS_filesys
-  export fetch_branch="client"
-  export push_branch="server"
+  export fetch_branch="server"
+  export push_branch="client"
 
   GBRS_fetchd &
   GBRS_checkoutd &
@@ -55,8 +55,8 @@ export -f gbrsd
 
 gbrs(){
   GBRS_filesys
-  export fetch_branch="server"
-  export push_branch="client"
+  export fetch_branch="client"
+  export push_branch="server"
 
   GBRS_fetchd &
   GBRS_checkoutd &
