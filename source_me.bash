@@ -1,68 +1,67 @@
-export GBRS_dir="${HOME}/.GiBaReSh"
+export GBRS_DIR="${HOME}/.GiBaReSh"
 
 GBRS_filesys(){
-  export GBRS_client_dir="${GBRS_dir}/client"
-  export GBRS_server_dir="${GBRS_dir}/server"
-  export GBRS_GIT_DIR="${GBRS_dir}/.git"
-  export GBRS_GIT_INDEX_FILE=".index"
-  export GBRS_iofile="io.txt"
-  export GBRS_hook="post-checkout" # Actual hook is a symbolic link to this
-  export GBRS_interface="${GBRS_dir}/interface.txt"
+  export incoming_dir="${GBRS_DIR}/incoming"
+  export outgoing_dir="${GBRS_DIR}/outgoing"
+  export GIT_DIR="${GBRS_DIR}/.git"
+  export iofile="io.txt"
+  export hook="post-checkout" # Actual hook is a symbolic link to this
+  export interface="${GBRS_DIR}/interface.txt"
 }
 export -f GBRS_filesys
 
 GBRS_fetchd(){
-  export GIT_DIR="${GBRS_GIT_DIR}"
-  local branch="${1}"
+  cd "${incoming_dir}"
   while true;do
-    git fetch --quiet --negotiation-tip=FETCH_HEAD origin "${branch}"
+    git fetch --quiet origin "${fetch_branch}"
   done
 }
 export -f GBRS_fetchd
 
 GBRS_checkoutd(){
-  local loop="true"
-  trap 'loop="false"' TERM
-  export GIT_WORK_TREE="${GBRS_dir}/${1}"; export GIT_DIR="${GBRS_GIT_DIR}"
-  export GIT_INDEX_FILE="${GBRS_GIT_INDEX_FILE}"
-  ln -s "${GIT_WORK_TREE}/${GBRS_hook}" "${GIT_DIR}/hooks/post-checkout"
-  
+  cd "${incoming_dir}"
+  ln -sf "./${hook}" "${GIT_DIR}/hooks/post-checkout"  
   local commit
-  while [[ "${loop}"=="true" ]] ; do
-    for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
-      git checkout --quiet "${commit}" # Rest is done by post-checkout hook
-      patch "${GBRS_interface}" \
-        <(diff --force --new-file "${GBRS_interface}" "${GIT_WORK_TREE}/${GBRS_iofile}")
+  while true;do
+    for commit in "$(git rev-list HEAD..origin/${fetch_branch})"; do
+      git reset --hard --quiet "${commit}" # Rest is done by post-checkout hook
+      patch "${interface}" <(diff --new-file "${interface}" "./${iofile}")
     done
   done
 }
 export -f GBRS_checkoutd
 
 GBRS_commit(){
-  export GIT_WORK_TREE="${GBRS_dir}/${1}"; export GIT_DIR="${GBRS_GIT_DIR}"  
-  git add --all; git commit -m ':-)'
+  (
+    cd "${outgoing_dir}"
+    git add --all
+    git commit --quiet --allow-empty --allow-empty-message -m ''
+  )
 }
 export -f GBRS_commit
 
 gbrsd(){
   GBRS_filesys
-  GBRS_fetchd "server" & local fetchd_pid="$!"
-  GBRS_checkoutd "server" & local checkoutd_pid="$!"
-  trap 'kill "${fetchd_pid}" "${checkoutd_pid}"; return' TERM
+  export fetch_branch="client"
+  export push_branch="server"
+
+  GBRS_fetchd &
+  GBRS_checkoutd &
   
-  trap 'GBRS_commit "client"' CHLD
-  bash -i < <(tail -F "${GBRS_interface}" 2>/dev/null) \
-    &>>"${GBRS_client_dir}/${GBRS_iofile}"
+  trap GBRS_commit CHLD
+  bash -i < <(tail -F "${interface}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
 }
 export -f gbrsd
 
 gbrs(){
   GBRS_filesys
-  GBRS_fetchd "client" & local fetchd_pid="$!"
-  GBRS_checkoutd "client" & local checkoutd_pid="$!"
-  trap 'kill "${fetchd_pid}" "${checkoutd_pid}"' return
+  export fetch_branch="server"
+  export push_branch="client"
+
+  GBRS_fetchd &
+  GBRS_checkoutd &
   
-  tail -F "${GBRS_interface}" 2>/dev/null &
+  tail -F "${interface}" 2>/dev/null &
 
   echo_command(){ 
     local command="${1}"
@@ -78,8 +77,7 @@ gbrs(){
     while true; do
       read -e
       echo_command "${REPLY}"
-      GBRS_commit "server"
+      GBRS_commit
     done
-  )>>"${GBRS_server_dir}/${GBRS_iofile}"
-  
+  )>>"${outgoing_dir}/${iofile}"  
 }
