@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Source the file 'source_me.bash' before executing this file
 
 command -v git || (echo 'Install git' ; exit) 
-GBRS_filesys || (echo "Source 'source_me.bash' and relaunch"; exit)
 
 echo 'You already have a repository in cloud, right?
 If not, create one at any of the following for free:
@@ -12,14 +10,21 @@ read -ep 'URL: ' url
 [[ -z "${url}" ]] && exit
 uri="${url#*:\/\/}"
 fetch_url="git://${uri}"
-protocol="${url%:\/\/*}"
-[[ "${protocol}"=="ssh" ]] && echo 'No support for ssh yet. Lets use https.'
+protocol="${url%:\/\/*}://"
 
-read -ep 'Username: ' uid
-read -ep 'Passwd/PAT: ' pass
-tput cuu1; tput el1; echo 'Got your passwd.'
+if [[ "${protocol}"=="ssh://" ]]; then
+  echo 'No support for ssh yet. Lets use https.'
+  protocol="https://"
+fi
 
-push_url="https://${uid}:${pass}@${uri}"
+if [[ "${protocol}"=="https://" ]]; then
+  read -ep 'Username: ' uid
+  read -ep 'Passwd/PAT: ' pass
+  tput cuu1; tput el1; echo 'Got your passwd.'
+  protocol="https://${uid}:${pass}@"
+fi
+
+push_url="${protocol}${uri}"
 
 echo 'You shall be using this PC as'
 read -p '1. Server 2. Client: ' -n1 choice
@@ -36,13 +41,20 @@ read -sn1
 
 echo "Configuring ${config}..."
 
+code_dir="${BASH_SOURCE%/*}"
+. "${code_dir}/source_me.bash"
+GBRS_filesys
+
 mkdir -p "${GBRS_DIR}"
 touch "${interface}"
 
 (
 set -o errexit
 git clone --verbose --bare "${fetch_url}" "${GIT_DIR}"
+ln "${code_dir}/${post-commit}" "${GIT_DIR}/hooks/post-commit"
 git remote set-url --push origin "${push_url}"
 git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
 git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}"
+echo '#!/usr/bin/env bash' > "${outgoing_dir}/${hook}"
+GBRS_commit
 )
