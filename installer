@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-command -v git || (echo 'Install git' ; exit) 
+command -v git &>/dev/null || (echo 'Install git' ; exit)
 
 echo 'You already have a repository in cloud, right?
 If not, create one at any of the following for free:
@@ -9,15 +9,20 @@ github.com, gitlab.com, sourceforge.net, bitbucket.org
 read -ep 'URL: ' url
 [[ -z "${url}" ]] && exit
 uri="${url#*:\/\/}"
-fetch_url="git://${uri}"
 protocol="${url%:\/\/*}://"
 
-if [[ "${protocol}"=="ssh://" ]]; then
+if [[ "${protocol}" == "file://" ]] || [[ -n "${protocol}" ]]; then
+  fetch_url="${uri}"
+else
+  fetch_url="git://${uri}"
+fi
+
+if [[ "${protocol}" == "ssh://" ]]; then
   echo 'No support for ssh yet. Lets use https.'
   protocol="https://"
 fi
 
-if [[ "${protocol}"=="https://" ]]; then
+if [[ "${protocol}" == "https://" ]]; then
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
   tput cuu1; tput el1; echo 'Got your passwd.'
@@ -27,15 +32,16 @@ fi
 push_url="${protocol}${uri}"
 
 echo 'You shall be using this PC as'
-read -p '1. Server 2. Client: ' -n1 choice
+read -p '1. Server 2. Client:' -n1 choice
 while true;do
   case "${choice}" in
     1)config="server"; talkto="client"; break;;
     2)config="client"; talkto="server"; break;;
-    *)read -p 'Type either 1 or 2: ' -n1 choice;;
+    *)read -p 'Type either 1 or 2:' -n1 choice;;
   esac
 done
 
+echo
 echo 'Make sure you are connected to internet. Press any key after that.'
 read -sn1
 
@@ -51,11 +57,12 @@ touch "${interface}"
 (
 set -o errexit
 git clone --verbose --bare "${fetch_url}" "${GIT_DIR}"
-ln "${code_dir}/${post-commit}" "${GIT_DIR}/hooks/post-commit"
 git remote set-url --push origin "${push_url}"
 git worktree add --track -b "${config}" "${incoming_dir}" "origin/${config}"
 git worktree add --track -b "${talkto}" "${outgoing_dir}" "origin/${talkto}"
 cd "${outgoing_dir}"
 echo '#!/usr/bin/env bash' > "${hook}" ; chmod +x "${hook}"
 GBRS_commit
+git push -u origin "${talkto}"
+ln "${code_dir}/post-commit" "${GIT_DIR}/hooks/post-commit"
 )
