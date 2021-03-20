@@ -1,19 +1,19 @@
-export GBRS_DIR="${GBRS_DIR:="${HOME}/.gibberish"}"
+export GIBBERISH_DIR="${GIBBERISH_DIR:="${HOME}/.gibberish"}"
 
-GBRS_filesys(){
-  export incoming_dir="${GBRS_DIR}/incoming"
-  export outgoing_dir="${GBRS_DIR}/outgoing"
-  export git_dir="${GBRS_DIR}/.git"
+GIBBERISH_filesys(){
+  export incoming_dir="${GIBBERISH_DIR}/incoming"
+  export outgoing_dir="${GIBBERISH_DIR}/outgoing"
+  export git_dir="${GIBBERISH_DIR}/.git"
   export iofile="io.txt"
   export hook="script.bash"
-  export incoming="${GBRS_DIR}/incoming.txt"
-  export outgoing="${GBRS_DIR}/outgoing.txt"
-  export push_lock="${GBRS_DIR}/push.lock"
-  export write_lock="${GBRS_DIR}/write.lock"
-  export commit_lock="${GBRS_DIR}/commit.lock"
-  export checkout_lock="${GBRS_DIR}/checkout.lock"
+  export incoming="${GIBBERISH_DIR}/incoming.txt"
+  export outgoing="${GIBBERISH_DIR}/outgoing.txt"
+  export push_lock="${GIBBERISH_DIR}/push.lock"
+  export write_lock="${GIBBERISH_DIR}/write.lock"
+  export commit_lock="${GIBBERISH_DIR}/commit.lock"
+  export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
 
-  mkdir -p "${GBRS_DIR}"
+  mkdir -p "${GIBBERISH_DIR}"
 
   touch "${incoming}"
   touch "${push_lock}"
@@ -21,9 +21,9 @@ GBRS_filesys(){
   touch "${checkout_lock}"
   touch "${write_lock}"
 }
-export -f GBRS_filesys
+export -f GIBBERISH_filesys
 
-GBRS_fetchd(){  
+GIBBERISH_fetchd(){  
   (
   cd "${incoming_dir}"
 
@@ -46,9 +46,9 @@ GBRS_fetchd(){
   fetch &
   )
 }
-export -f GBRS_fetchd
+export -f GIBBERISH_fetchd
 
-GBRS_commit(){
+GIBBERISH_commit(){
   (
   cd "${outgoing_dir}"
   flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}"
@@ -56,41 +56,42 @@ GBRS_commit(){
   git commit --quiet --no-verify --allow-empty-message -m '' 2>/dev/null
   )
 }
-export -f GBRS_commit
+export -f GIBBERISH_commit
 
-GBRS_write(){
+GIBBERISH_write(){
 # Append to path=$outgoing even if it is moved/unlinked anytime
   while IFS= read -r; do
     flock -x "${write_lock}" echo "${REPLY}" >> "${outgoing}"
-    flock -x "${commit_lock}" GBRS_commit &
+    flock -x "${commit_lock}" GIBBERISH_commit &
   done
 }
-export -f GBRS_write
+export -f GIBBERISH_write
 
-GBRS_read(){ tail -n+1 -F "${incoming}" 2>/dev/null;}
-export -f GBRS_read
+GIBBERISH_read(){ tail -n+1 -F "${incoming}" 2>/dev/null;}
+export -f GIBBERISH_read
 
-gbrsd(){
-  GBRS_filesys
+gibberish-server(){
+  GIBBERISH_filesys
   export fetch_branch="server"
   export push_branch="client"
 
-  GBRS_fetchd
+  GIBBERISH_fetchd
   
-  bash -i < <(GBRS_read) &> >(GBRS_write)
+  bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
 }
-export -f gbrsd
+export -f gibberish-server
 
-gbrs(){
-  GBRS_filesys
+gibberish(){
+  GIBBERISH_filesys
   export fetch_branch="client"
   export push_branch="server"
 
-  GBRS_fetchd &
-  GBRS_read &
+  GIBBERISH_fetchd &
+  GIBBERISH_read &
 
   while read -re; do
     (tput cuu1; tput el1; tput el)>/dev/tty
     echo "${REPLY}"
-  done | GBRS_write
+  done | GIBBERISH_write
 }
+export -d gibberish
