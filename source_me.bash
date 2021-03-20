@@ -42,7 +42,7 @@ GBRS_commit(){
   (
     cd "${outgoing_dir}"
     git add --all
-    git commit --quiet --allow-empty --allow-empty-message -m ''
+    git commit --quiet --no-verify --allow-empty --allow-empty-message -m ''
   )
 }
 export -f GBRS_commit

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-command -v git &>/dev/null || (echo 'Install git' ; exit)
+command -v git &>/dev/null || (echo 'Install git' ; exit 1)
 code_dir="${BASH_SOURCE%/*}"
-. "${code_dir}/source_me.bash"
+. "${code_dir}/source_me.bash" || (echo 'Missing source_me.bash' ; exit 1)
 rm -rf "${GBRS_DIR}"
 
 echo 'You already have a repository in cloud, right?
@@ -56,16 +56,27 @@ GBRS_filesys
 mkdir -p "${GBRS_DIR}"
 touch "${interface}"
 
-git clone --bare "${fetch_url}" "${git_dir}"
+git clone --bare "${fetch_url}" "${git_dir}" || (echo exiting; exit 1)
+cd "${git_dir}"
 git remote set-url --push origin "${push_url}"
+
+# Check if repo has atleast one commit; create a commit if there is none
+git show -s &>/dev/null || (git clone -q . ../main; cd ../main; \
+git commit --allow-empty -m 'Root commit'; git push -q origin)
+
+# Create outgoing directory; checked out with appropriate branch
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null \
 || \
 (git worktree add -b "${talkto}" "${outgoing_dir}" &>/dev/null
 git push origin "${talkto}"
 )
+
+# Create incoming directory; checked out with appropriate branch
 git worktree add "${incoming_dir}" "${config}" &>/dev/null \
 || \
 (git worktree add -b "${config}" "${incoming_dir}" &>/dev/null
 git push origin "${config}"
 )
-ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit"
+
+ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit" || \
+  (echo 'Missing post-commit hook' ; exit 1)
