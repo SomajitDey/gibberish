@@ -6,7 +6,8 @@ GBRS_filesys(){
   export git_dir="${GBRS_DIR}/.git"
   export iofile="io.txt"
   export hook="script.bash"
-  export interface="${GBRS_DIR}/interface.txt"
+  export incoming="${GBRS_DIR}/incoming.txt"
+  export outgoing="${GBRS_DIR}/outgoing.txt"
 }
 export -f GBRS_filesys
 
@@ -27,7 +28,7 @@ GBRS_listend(){
     while true;do
       for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
         git reset --hard --quiet "${commit}"
-        patch "${interface}" <(diff --new-file "${interface}" "./${iofile}")
+        mv -f "./${iofile}" "${incoming}"
         [[ -f "./${hook}" ]] && bash "./${hook}"
       done
     done
@@ -42,11 +43,24 @@ export -f GBRS_listend
 GBRS_commit(){
   (
     cd "${outgoing_dir}"
+    mv -f "${outgoing}" "./${iofile}"
     git add --all
     git commit --quiet --no-verify --allow-empty --allow-empty-message -m ''
   )
 }
 export -f GBRS_commit
+
+GBRS_appendto(){
+# Follow and append input to filepath given as parameter
+(
+  local outfile="${1}"
+  IFS=
+  while read -r; do
+    echo "${REPLY}" >> "${outfile}"
+  done
+)
+}
+export -f GBRS_appendto
 
 gbrsd(){
   GBRS_filesys
@@ -56,7 +70,7 @@ gbrsd(){
   GBRS_listend &
   
   trap GBRS_commit CHLD
-  bash -i < <(tail -F "${interface}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
+  bash -i < <(tail -F "${incoming}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
 }
 export -f gbrsd
 
@@ -67,7 +81,7 @@ gbrs(){
 
   GBRS_listend &
   
-  tail -F "${interface}" 2>/dev/null &
+  tail -F "${incoming}" 2>/dev/null &
 
   echo_command(){ 
     local command="${1}"
@@ -81,9 +95,9 @@ gbrs(){
 
   (
     while true; do
-      read -e
+      read -re
       echo_command "${REPLY}"
       GBRS_commit
     done
-  )>>"${outgoing_dir}/${iofile}"  
+  ) | GBRS_appendto "${outgoing}"  
 }

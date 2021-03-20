@@ -54,7 +54,7 @@ fi
 echo "Configuring ${config}..."
 GBRS_filesys
 mkdir -p "${GBRS_DIR}"
-touch "${interface}"
+touch "${incoming}"
 
 git clone --bare "${fetch_url}" "${git_dir}" || (echo exiting; exit 1)
 cd "${git_dir}"
