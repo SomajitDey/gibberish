@@ -1,35 +1,42 @@
-export GBRS_DIR="${GBRS_DIR:="${HOME}/.GiBaReSh"}"
+export GBRS_DIR="${GBRS_DIR:="${HOME}/.gibberish"}"
 
 GBRS_filesys(){
   export incoming_dir="${GBRS_DIR}/incoming"
   export outgoing_dir="${GBRS_DIR}/outgoing"
-  export GIT_DIR="${GBRS_DIR}/.git"
+  export git_dir="${GBRS_DIR}/.git"
   export iofile="io.txt"
-  export hook="post-checkout" # Actual hook is a symbolic link to this
+  export hook="script.bash"
   export interface="${GBRS_DIR}/interface.txt"
 }
 export -f GBRS_filesys
 
-GBRS_fetchd(){
+GBRS_listend(){  
+(
   cd "${incoming_dir}"
-  while true;do
-    git fetch --quiet origin "${fetch_branch}"
-  done
-}
-export -f GBRS_fetchd
+  git fetch --quiet origin "${fetch_branch}"
 
-GBRS_checkoutd(){
-  cd "${incoming_dir}"
-  [[ -e "./${hook}" ]] && ln -sf "./${hook}" "${GIT_DIR}/hooks/post-checkout"
-  local commit
-  while true;do
-    for commit in "$(git rev-list HEAD..origin/${fetch_branch})"; do
-      git reset --hard --quiet "${commit}" # Rest is done by post-checkout hook
-      patch "${interface}" <(diff --new-file "${interface}" "./${iofile}")
+  fetchd(){
+    while true;do
+      git fetch --quiet origin "${fetch_branch}"
     done
-  done
+  }
+
+  checkoutd(){
+    local commit
+    while true;do
+      for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
+        git reset --hard --quiet "${commit}"
+        patch "${interface}" <(diff --new-file "${interface}" "./${iofile}")
+        [[ -f "./${hook}" ]] && bash "./${hook}"
+      done
+    done
+  }
+
+  fetchd &
+  checkoutd &
+)
 }
-export -f GBRS_checkoutd
+export -f GBRS_listend
 
 GBRS_commit(){
   (
@@ -45,8 +52,7 @@ gbrsd(){
   export fetch_branch="server"
   export push_branch="client"
 
-  GBRS_fetchd &
-  GBRS_checkoutd &
+  GBRS_listend
   
   trap GBRS_commit CHLD
   bash -i < <(tail -F "${interface}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
@@ -58,8 +64,7 @@ gbrs(){
   export fetch_branch="client"
   export push_branch="server"
 
-  GBRS_fetchd &
-  GBRS_checkoutd &
+  GBRS_listend
   
   tail -F "${interface}" 2>/dev/null &
 

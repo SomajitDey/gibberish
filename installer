@@ -56,16 +56,16 @@ GBRS_filesys
 mkdir -p "${GBRS_DIR}"
 touch "${interface}"
 
-git clone --bare "${fetch_url}" "${GIT_DIR}"
+git clone --bare "${fetch_url}" "${git_dir}"
 git remote set-url --push origin "${push_url}"
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null \
 || \
 (git worktree add -b "${talkto}" "${outgoing_dir}" &>/dev/null
-git push -u origin "${talkto}"
+git push origin "${talkto}"
 )
 git worktree add "${incoming_dir}" "${config}" &>/dev/null \
 || \
 (git worktree add -b "${config}" "${incoming_dir}" &>/dev/null
-git push -u origin "${config}"
+git push origin "${config}"
 )
-ln "${code_dir}/post-commit" "${GIT_DIR}/hooks/post-commit"
+ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit"
