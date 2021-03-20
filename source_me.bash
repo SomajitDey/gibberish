@@ -93,8 +93,7 @@ gbrs(){
   export -f echo_command
 
   (
-    while true; do
-      read -re
+    while read -re; do
       echo_command "${REPLY}"
     done
   ) | GBRS_appendto  
