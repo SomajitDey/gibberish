@@ -13,7 +13,8 @@ export -f GBRS_filesys
 GBRS_listend(){  
 (
   cd "${incoming_dir}"
-  git fetch --quiet origin "${fetch_branch}"
+  until git fetch --quiet origin "${fetch_branch}"; do
+  done
 
   fetchd(){
     while true;do
@@ -52,7 +53,7 @@ gbrsd(){
   export fetch_branch="server"
   export push_branch="client"
 
-  GBRS_listend
+  GBRS_listend &
   
   trap GBRS_commit CHLD
   bash -i < <(tail -F "${interface}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
@@ -64,7 +65,7 @@ gbrs(){
   export fetch_branch="client"
   export push_branch="server"
 
-  GBRS_listend
+  GBRS_listend &
   
   tail -F "${interface}" 2>/dev/null &
 
