@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
 lock="${GBRS_DIR}/push.lock"
 touch "${lock}"
-flock -x "${lock}" git push --quiet --no-verify origin "${push_branch}" &
+
+pushd(){
+  cd "${outgoing_dir}"
+  until git push --quiet --no-verify origin "${push_branch}"; do
+    git pull --rebase --quiet --no-verify origin "${push_branch}"
+  done
+}
+
+flock -x "${lock}" pushd &
