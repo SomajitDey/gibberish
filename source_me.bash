@@ -53,10 +53,10 @@ export -f GBRS_commit
 GBRS_appendto(){
 # Follow and append input to filepath given as parameter
 (
-  local outfile="${1}"
   IFS=
   while read -r; do
-    echo "${REPLY}" >> "${outfile}"
+    echo "${REPLY}" >> "${outgoing}"
+    GBRS_commit
   done
 )
 }
@@ -69,8 +69,7 @@ gbrsd(){
 
   GBRS_listend &
   
-  trap GBRS_commit CHLD
-  bash -i < <(tail -F "${incoming}" 2>/dev/null) &>>"${outgoing_dir}/${iofile}"
+  bash -i < <(tail -n+1 -F "${incoming}" 2>/dev/null) &> >(GBRS_appendto)
 }
 export -f gbrsd
 
@@ -81,7 +80,7 @@ gbrs(){
 
   GBRS_listend &
   
-  tail -F "${incoming}" 2>/dev/null &
+  tail -n+1 -F "${incoming}" 2>/dev/null &
 
   echo_command(){ 
     local command="${1}"
@@ -97,7 +96,6 @@ gbrs(){
     while true; do
       read -re
       echo_command "${REPLY}"
-      GBRS_commit
     done
-  ) | GBRS_appendto "${outgoing}"  
+  ) | GBRS_appendto  
 }
