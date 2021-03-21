@@ -65,6 +65,14 @@ GIBBERISH_write(){
 }
 export -f GIBBERISH_write
 
+GIBBERISH_read(){
+# We could have used tail -n+1 -F "${incoming}" 2>/dev/null;
+# With incoming being a text file instead of fifo
+# tail -f however would be polling the file, hence busy wait, which is undesirable
+  while cat "${incoming}"; do : ; done
+}
+export -f GIBBERISH_read
+
 gibberish-server(){
   GIBBERISH_filesys
   export fetch_branch="server"
@@ -72,7 +80,7 @@ gibberish-server(){
 
   GIBBERISH_fetchd
   
-  bash -i < "${incoming}" &> >(GIBBERISH_write)
+  bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
 }
 export -f gibberish-server
 
@@ -82,7 +90,7 @@ gibberish(){
   export push_branch="server"
 
   GIBBERISH_fetchd
-  (cat "${incoming}" &) # Sub-shell is invoked so that pid of bg job is not shown in tty
+  (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
 
   while read -re; do
     (tput cuu1; tput el1; tput el)>/dev/tty
