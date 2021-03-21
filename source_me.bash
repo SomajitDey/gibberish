@@ -34,7 +34,7 @@ GIBBERISH_fetchd(){
       mv -f "./${iofile}" "${incoming}" &>/dev/null
       [[ -f "./${hook}" ]] && bash "./${hook}"
     done;}
-  export -f checkout
+   export -f checkout
   
   fetch(){
     while true;do
@@ -50,9 +50,9 @@ export -f GIBBERISH_fetchd
 GIBBERISH_commit(){
   (
   cd "${outgoing_dir}"
-  flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}"
+  flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}" &>/dev/null
   git add --all
-  git commit --quiet --no-verify --allow-empty-message -m '' 2>/dev/null
+  git commit --no-verify --allow-empty-message -m '' &>/dev/null
   )
 }
 export -f GIBBERISH_commit
