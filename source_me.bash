@@ -31,13 +31,14 @@ GIBBERISH_fetchd(){
     local commit
     for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
       git reset --hard --quiet "${commit}"
-      mv -f "./${iofile}" "${incoming}"
+      mv -f "./${iofile}" "${incoming}" &>/dev/null
       [[ -f "./${hook}" ]] && bash "./${hook}"
     done;}
-
+  export -f checkout
+  
   fetch(){
     while true;do
-      git fetch --quiet origin "${fetch_branch}" && \
+      git fetch --quiet origin "${fetch_branch}" || continue
       flock -x "${checkout_lock}" -c checkout &
     done;}
 
@@ -84,7 +85,7 @@ gibberish(){
   export fetch_branch="client"
   export push_branch="server"
 
-  GIBBERISH_fetchd &
+  GIBBERISH_fetchd
   GIBBERISH_read &
 
   while read -re; do

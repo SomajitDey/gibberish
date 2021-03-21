@@ -6,5 +6,6 @@ push(){
     git pull --rebase --quiet --no-verify origin "${push_branch}"
   done
 }
+export -f push
 
-flock -x "${push_lock}" push &
+flock -x "${push_lock}" -c push &
