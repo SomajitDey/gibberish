@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export rcfile='gibberish.rc'
+export rcfile='gibberish_rc.bash'
 
 command -v git &>/dev/null || (echo 'Install git' ; exit 1)
 command -v flock &>/dev/null || (echo 'Install flock' ; exit 1)
