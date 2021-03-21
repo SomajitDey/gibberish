@@ -2,13 +2,14 @@
 
 export rcfile='gibberish_rc.bash'
 
-command -v git &>/dev/null || (echo 'Install git' ; exit 1)
-command -v flock &>/dev/null || (echo 'Install flock' ; exit 1)
-command -v gpg &>/dev/null || (echo 'Install gpg' ; exit 1)
+command -v git &>/dev/null || { echo 'Install git' ; exit 1;}
+command -v flock &>/dev/null || { echo 'Install flock' ; exit 1;}
+command -v gpg &>/dev/null || { echo 'Install gpg' ; exit 1;}
 
-code_dir="${BASH_SOURCE%/*}"
-. "${code_dir}/${rcfile}" || (echo "Missing ${rcfile}" ; exit 1)
-rm -rf "${GIBBERISH_DIR}"
+code_dir_relative="${BASH_SOURCE%/*}"
+code_dir="$(cd "${code_dir_relative}"; echo "${PWD}" )"
+
+. "${code_dir}/${rcfile}" || { echo "Missing ${rcfile}" ; exit 1;}
 
 echo 'You already have a repository in cloud, right?
 If not, create one at any of the following for free:
@@ -56,12 +57,15 @@ if ! "${localhost}"; then
 fi
 
 echo "Configuring ${config}..."
+GIBBERISH_DIR="${HOME}/${config}"
 GIBBERISH_filesys
+rm -rf "${GIBBERISH_DIR}" # Clean previous installation
+mkdir -p "${GIBBERISH_DIR}"
 
-git clone "${fetch_url}" "${incoming_dir}" || (echo exiting; exit 1)
+git clone "${fetch_url}" "${incoming_dir}" || { echo exiting; exit 1;}
 
 ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
-  (echo 'Missing post-commit hook' ; exit 1)
+  { echo 'Missing post-commit hook' ; exit 1;}
 
 cd "${incoming_dir}"
 git remote set-url --push origin "${push_url}"
@@ -78,4 +82,4 @@ git push --quiet origin "${talkto}")
 
 cp "${code_dir}/${rcfile}" "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
-grep -x "${run_command}" "${HOME}/.bashrc" || echo "${run_command}" >> "${HOME}/.bashrc"
+grep -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
