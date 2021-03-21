@@ -23,6 +23,7 @@ GIBBERISH_fetchd(){
       git restore --quiet --source="${commit}" "./${iofile}"
       cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; and this is blocking
     done
+    if [[ -z "${commit}" ]]; then return 1 ; fi
     git tag -d last_read &>/dev/null; git tag last_read "${commit}"; }
   export -f checkout
   
@@ -69,11 +70,11 @@ GIBBERISH_prelaunch(){
 
   cd "${incoming_dir}"
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
-    { echo 'Pull failed' >&2 ; exit;}
+    { echo 'Pull failed' >&2 ; return 1;}
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
-  mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit;}
+  mkfifo "${incoming}" #|| { echo 'Pipe exists: May be another session running' >&2 ; return 1;}
   touch "${push_lock}"
   touch "${commit_lock}"
   touch "${checkout_lock}"
