@@ -56,28 +56,20 @@ fi
 echo "Configuring ${config}..."
 GIBBERISH_filesys
 
-git clone --bare "${fetch_url}" "${git_dir}" || (echo exiting; exit 1)
+git clone "${fetch_url}" "${incoming_dir}" || (echo exiting; exit 1)
 
-ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit" || \
+ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
   (echo 'Missing post-commit hook' ; exit 1)
 
-cd "${git_dir}"
+cd "${incoming_dir}"
 git remote set-url --push origin "${push_url}"
 
 # Check if repo has atleast one commit; create a commit if there is none
-git show -s &>/dev/null || (git clone -q . ../main; cd ../main; \
-git commit --allow-empty -m 'Root commit'; git push -q origin)
+git switch --quiet "${config}" &>/dev/null || \
+(git checkout --quiet -b "${config}"
+git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}")
 
 # Create outgoing directory; checked out with appropriate branch
-git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null \
-|| \
-(git worktree add -b "${talkto}" "${outgoing_dir}" &>/dev/null
-git push origin "${talkto}"
-)
-
-# Create incoming directory; checked out with appropriate branch
-git worktree add "${incoming_dir}" "${config}" &>/dev/null \
-|| \
-(git worktree add -b "${config}" "${incoming_dir}" &>/dev/null
-git push origin "${config}"
-)
+git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
+(git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
+git push --quiet origin "${talkto}")
