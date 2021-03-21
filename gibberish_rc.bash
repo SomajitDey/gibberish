@@ -28,7 +28,7 @@ GIBBERISH_fetchd(){
 
   checkout(){
     local commit
-    for commit in $(git rev-list last_read.."${fetch_branch}"); do
+    for commit in $(git rev-list last_read.."${fetch_branch}" 2>/dev/null); do
       git restore --quiet --source="${commit}" "./${iofile}"
       cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; and this is blocking
     done
@@ -80,7 +80,10 @@ gibberish-server(){
 
   GIBBERISH_fetchd
   
-  bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
+# If client sends exit or logout, new shell launches 
+  while true; do
+    bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
+  done
 }
 export -f gibberish-server
 
