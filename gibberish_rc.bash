@@ -20,8 +20,15 @@ GIBBERISH_fetchd(){
   checkout(){
     local commit
     for commit in $(git rev-list last_read.."${fetch_branch}" 2>/dev/null); do
-      git restore --quiet --source="${commit}" "./${iofile}"
-      cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; and this is blocking
+      # Executable code (hook) can be passed through commit message file. Use-case: ping; file-transfer
+      # Code for such special commit: git commit --allow-empty -F script.bash
+      # Commit message should be an empty string otherwise
+      if [[ -z "$(git log -1 --pretty=%B "${commit}")" ]]; then
+        git restore --quiet --source="${commit}" "./${iofile}"
+        cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; This is blocking
+      else  
+        bash  <(git log -1 --pretty=%B "${commit}") &> >(GIBBERISH_write) &
+      fi
     done
     if [[ -z "${commit}" ]]; then return 1 ; fi
     git tag -d last_read &>/dev/null; git tag last_read "${commit}"; }
@@ -43,15 +50,16 @@ GIBBERISH_commit(){
   cd "${outgoing_dir}"
   flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}" &>/dev/null
   git add --all
-  git commit --no-verify --no-gpg-sign -m ':)' &>/dev/null
+  git commit --no-verify --no-gpg-sign --allow-empty-message -m '' &>/dev/null
   )
 }
 export -f GIBBERISH_commit
 
 GIBBERISH_write(){
 # Append to path=$outgoing even if it is moved/unlinked anytime
-  while IFS= read -r; do
-    flock -x "${write_lock}" echo "${REPLY}" >> "${outgoing}"
+  local line
+  while IFS= read -r line; do
+    flock -x "${write_lock}" echo "${line}" >> "${outgoing}"
     flock -x "${commit_lock}" -c GIBBERISH_commit &
   done
 }
@@ -74,7 +82,7 @@ GIBBERISH_prelaunch(){
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
-  mkfifo "${incoming}" #|| { echo 'Pipe exists: May be another session running' >&2 ; return 1;}
+  mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; return 1;}
   touch "${push_lock}"
   touch "${commit_lock}"
   touch "${checkout_lock}"
@@ -101,12 +109,16 @@ gibberish(){
   export push_branch="server"
   GIBBERISH_prelaunch
 
+  trap 'rm "${incoming}"; kill -9 -$$' return exit
+  
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
 
-  while read -re; do
+  local cmd
+  while read -re cmd ; do
+    [[ -z "${cmd}" ]] && continue
     (tput cuu1; tput el1; tput el)>/dev/tty
-    echo "${REPLY}"
+    echo "${cmd}"
   done | GIBBERISH_write
 }
 export -f gibberish
