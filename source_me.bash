@@ -29,7 +29,7 @@ GIBBERISH_fetchd(){
 
   checkout(){
     local commit
-    for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
+    for commit in $(git rev-list HEAD..origin/"${fetch_branch}"); do
       git reset --hard --quiet "${commit}"
       mv -f "./${iofile}" "${incoming}" &>/dev/null
       [[ -f "./${hook}" ]] && bash "./${hook}"
@@ -86,7 +86,7 @@ gibberish(){
   export push_branch="server"
 
   GIBBERISH_fetchd
-  GIBBERISH_read &
+  (GIBBERISH_read &)
 
   while read -re; do
     (tput cuu1; tput el1; tput el)>/dev/tty
