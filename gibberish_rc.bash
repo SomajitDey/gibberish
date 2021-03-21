@@ -55,6 +55,12 @@ GIBBERISH_commit(){
 }
 export -f GIBBERISH_commit
 
+GIBBERISH_hook_commit(){
+# Usage: GIBBERISH_hook_commit -m <command string to be passed to bash>
+# Usage: GIBBERISH_hook_commit -F <bash script path>
+  (cd "${outgoing_dir}"; git commit --no-verify --no-gpg-sign --allow-empty $@)
+}
+
 GIBBERISH_write(){
 # Append to path=$outgoing even if it is moved/unlinked anytime
   local line
