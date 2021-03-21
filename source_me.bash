@@ -5,8 +5,7 @@ GIBBERISH_filesys(){
   export outgoing_dir="${GIBBERISH_DIR}/outgoing"
   export git_dir="${GIBBERISH_DIR}/.git"
   export iofile="io.txt"
-  export hook="script.bash"
-  export incoming="${GIBBERISH_DIR}/incoming.txt"
+  export incoming="${GIBBERISH_DIR}/incoming.fifo"
   export outgoing="${GIBBERISH_DIR}/outgoing.txt"
   export push_lock="${GIBBERISH_DIR}/push.lock"
   export write_lock="${GIBBERISH_DIR}/write.lock"
@@ -15,7 +14,7 @@ GIBBERISH_filesys(){
 
   mkdir -p "${GIBBERISH_DIR}"
 
-  touch "${incoming}"
+  [[ -p "${incoming}" ]] || mkfifo "${incoming}"
   touch "${push_lock}"
   touch "${commit_lock}"
   touch "${checkout_lock}"
@@ -30,12 +29,11 @@ GIBBERISH_fetchd(){
   checkout(){
     local commit
     for commit in $(git rev-list last_read.."${fetch_branch}"); do
-      git restore --quiet --source="${commit}" .
-      mv -f "./${iofile}" "${incoming}" &>/dev/null
-      [[ -f "./${hook}" ]] && bash "./${hook}"
+      git restore --quiet --source="${commit}" "./${iofile}"
+      cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; and this is blocking
     done
-    git tag -d last_read; git tag last_read "${commit}"; }
-   export -f checkout
+    git tag -d last_read &>/dev/null; git tag last_read "${commit}"; }
+  export -f checkout
   
   fetch(){
     while true;do
@@ -67,9 +65,6 @@ GIBBERISH_write(){
 }
 export -f GIBBERISH_write
 
-GIBBERISH_read(){ tail -n+1 -F "${incoming}" 2>/dev/null;}
-export -f GIBBERISH_read
-
 gibberish-server(){
   GIBBERISH_filesys
   export fetch_branch="server"
@@ -77,7 +72,7 @@ gibberish-server(){
 
   GIBBERISH_fetchd
   
-  bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
+  bash -i < "${incoming}" &> >(GIBBERISH_write)
 }
 export -f gibberish-server
 
@@ -87,7 +82,7 @@ gibberish(){
   export push_branch="server"
 
   GIBBERISH_fetchd
-  (GIBBERISH_read &)
+  (cat "${incoming}" &) # Sub-shell is invoked so that pid of bg job is not shown in tty
 
   while read -re; do
     (tput cuu1; tput el1; tput el)>/dev/tty
