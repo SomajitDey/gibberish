@@ -11,14 +11,6 @@ GIBBERISH_filesys(){
   export write_lock="${GIBBERISH_DIR}/write.lock"
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
   export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
-
-  mkdir -p "${GIBBERISH_DIR}"
-
-  [[ -p "${incoming}" ]] || mkfifo "${incoming}"
-  touch "${push_lock}"
-  touch "${commit_lock}"
-  touch "${checkout_lock}"
-  touch "${write_lock}"
 }
 export -f GIBBERISH_filesys
 
@@ -73,10 +65,27 @@ GIBBERISH_read(){
 }
 export -f GIBBERISH_read
 
-gibberish-server(){
+GIBBERISH_prelaunch(){
   GIBBERISH_filesys
+  (
+  cd "${incoming_dir}"
+  git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
+    (echo 'Pull failed' >&2 ; exit) 
+  until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
+
+  mkfifo "${incoming}" || (echo 'Pipe exists: May be another session running' >&2 ; exit)
+  touch "${push_lock}"
+  touch "${commit_lock}"
+  touch "${checkout_lock}"
+  touch "${write_lock}"
+  )
+}
+export -f GIBBERISH_prelaunch
+
+gibberish-server(){
   export fetch_branch="server"
   export push_branch="client"
+  GIBBERISH_prelaunch
 
   GIBBERISH_fetchd
   
@@ -88,9 +97,9 @@ gibberish-server(){
 export -f gibberish-server
 
 gibberish(){
-  GIBBERISH_filesys
   export fetch_branch="client"
   export push_branch="server"
+  GIBBERISH_prelaunch
 
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
