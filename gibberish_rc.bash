@@ -58,7 +58,9 @@ export -f GIBBERISH_commit
 GIBBERISH_hook_commit(){
 # Usage: GIBBERISH_hook_commit -m <command string to be passed to bash>
 # Usage: GIBBERISH_hook_commit -F <bash script path>
-  (cd "${outgoing_dir}"; git commit --no-verify --no-gpg-sign --allow-empty $@)
+  (cd "${outgoing_dir}"
+  flock -x 200 ; git commit --no-verify --no-gpg-sign --allow-empty $@
+  ) 200>"${commit_lock}"
 }
 export -f GIBBERISH_hook_commit
 
