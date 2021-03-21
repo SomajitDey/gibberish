@@ -29,18 +29,16 @@ GIBBERISH_fetchd(){
 
   checkout(){
     local commit
-    while true;do
-      for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
-        git reset --hard --quiet "${commit}"
-        mv -f "./${iofile}" "${incoming}"
-        [[ -f "./${hook}" ]] && bash "./${hook}"
-      done
+    for commit in "$(git rev-list HEAD..FETCH_HEAD)"; do
+      git reset --hard --quiet "${commit}"
+      mv -f "./${iofile}" "${incoming}"
+      [[ -f "./${hook}" ]] && bash "./${hook}"
     done;}
 
   fetch(){
     while true;do
       git fetch --quiet origin "${fetch_branch}" && \
-      flock -x "${checkout_lock}" checkout &
+      flock -x "${checkout_lock}" -c checkout &
     done;}
 
   fetch &
@@ -62,7 +60,7 @@ GIBBERISH_write(){
 # Append to path=$outgoing even if it is moved/unlinked anytime
   while IFS= read -r; do
     flock -x "${write_lock}" echo "${REPLY}" >> "${outgoing}"
-    flock -x "${commit_lock}" GIBBERISH_commit &
+    flock -x "${commit_lock}" -c GIBBERISH_commit &
   done
 }
 export -f GIBBERISH_write
@@ -94,4 +92,4 @@ gibberish(){
     echo "${REPLY}"
   done | GIBBERISH_write
 }
-export -d gibberish
+export -f gibberish

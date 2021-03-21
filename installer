@@ -57,6 +57,10 @@ echo "Configuring ${config}..."
 GIBBERISH_filesys
 
 git clone --bare "${fetch_url}" "${git_dir}" || (echo exiting; exit 1)
+
+ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit" || \
+  (echo 'Missing post-commit hook' ; exit 1)
+
 cd "${git_dir}"
 git remote set-url --push origin "${push_url}"
 
@@ -77,6 +81,3 @@ git worktree add "${incoming_dir}" "${config}" &>/dev/null \
 (git worktree add -b "${config}" "${incoming_dir}" &>/dev/null
 git push origin "${config}"
 )
-
-ln "${code_dir}/post-commit" "${git_dir}/hooks/post-commit" || \
-  (echo 'Missing post-commit hook' ; exit 1)
