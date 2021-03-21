@@ -69,6 +69,8 @@ git switch --quiet "${config}" &>/dev/null || \
 (git checkout --quiet -b "${config}"
 git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}")
 
+until git tag last_read &>/dev/null; do git tag -d last_read; done
+
 # Create outgoing directory; checked out with appropriate branch
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
 (git worktree add --quiet -b "${talkto}" "${outgoing_dir}"

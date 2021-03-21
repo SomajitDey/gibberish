@@ -29,16 +29,17 @@ GIBBERISH_fetchd(){
 
   checkout(){
     local commit
-    for commit in $(git rev-list HEAD..origin/"${fetch_branch}"); do
-      git reset --hard --quiet "${commit}"
+    for commit in $(git rev-list last_read.."${fetch_branch}"); do
+      git restore --quiet --source="${commit}" .
       mv -f "./${iofile}" "${incoming}" &>/dev/null
       [[ -f "./${hook}" ]] && bash "./${hook}"
-    done;}
+    done
+    git tag -d last_read; git tag last_read "${commit}"; }
    export -f checkout
   
   fetch(){
     while true;do
-      git fetch --quiet origin "${fetch_branch}" || continue
+      git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || continue
       flock -x "${checkout_lock}" -c checkout &
     done;}
 
