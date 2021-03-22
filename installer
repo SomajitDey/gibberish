@@ -57,7 +57,7 @@ if ! "${localhost}"; then
 fi
 
 echo "Configuring ${config}..."
-GIBBERISH_DIR="${HOME}/${config}"
+export GIBBERISH="${config}"
 GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
 mkdir -p "${GIBBERISH_DIR}"
@@ -80,6 +80,6 @@ git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
 (git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
 git push --quiet origin "${talkto}")
 
-cp "${code_dir}/${rcfile}" "${HOME}/.${rcfile}"
+cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
-grep -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
+grep -q -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")

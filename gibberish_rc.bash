@@ -1,6 +1,6 @@
-export GIBBERISH_DIR="${GIBBERISH_DIR:="${HOME}/.gibberish"}"
 
 GIBBERISH_filesys(){
+  export GIBBERISH_DIR="${HOME}/.gibberish/${GIBBERISH}"
   export incoming_dir="${GIBBERISH_DIR}/incoming"
   export outgoing_dir="${GIBBERISH_DIR}/outgoing"
   export iofile="io.txt"
@@ -26,8 +26,10 @@ GIBBERISH_fetchd(){
       if [[ -z "$(git log -1 --pretty=%B "${commit}")" ]]; then
         git restore --quiet --source="${commit}" "./${iofile}"
         cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; This is blocking
-      else  
-        bash  <(git log -1 --pretty=%B "${commit}") &> >(GIBBERISH_write) &
+      else
+        # To show results to localhost, redirect stdout and stderr to fd 3 as: command &>&3
+        # Otherwise, the results would be pushed
+        bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write) &
       fi
     done
     if [[ -z "${commit}" ]]; then return 1 ; fi
@@ -49,8 +51,7 @@ GIBBERISH_commit(){
   (
   cd "${outgoing_dir}"
   flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}" &>/dev/null
-  git add --all
-  git commit --no-verify --no-gpg-sign --allow-empty-message -m '' &>/dev/null
+  git commit --no-verify --no-gpg-sign --allow-empty-message -m '' "./${iofile}" &>/dev/null
   )
 }
 export -f GIBBERISH_commit
@@ -83,9 +84,10 @@ GIBBERISH_read(){
 export -f GIBBERISH_read
 
 GIBBERISH_prelaunch(){
+  [[ "${GIBBERISH}" == "${fetch_branch}" ]] || { echo "Cannot run for GIBBERISH=${GIBBERISH}" >&2 ; return 1;}
   GIBBERISH_filesys
 
-  cd "${incoming_dir}"
+  cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; return 1;}
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo 'Pull failed' >&2 ; return 1;}
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
