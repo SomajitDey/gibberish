@@ -64,9 +64,6 @@ mkdir -p "${GIBBERISH_DIR}"
 
 git clone "${fetch_url}" "${incoming_dir}" || { echo exiting; exit 1;}
 
-ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
-  { echo 'Missing post-commit hook' ; exit 1;}
-
 cd "${incoming_dir}"
 git remote set-url --push origin "${push_url}"
 
@@ -79,6 +76,9 @@ git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}")
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
 (git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
 git push --quiet origin "${talkto}")
+
+ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
+  { echo 'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
 
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
