@@ -1,3 +1,11 @@
+# TODO: sleep <delay> to mimic latency in pull & push during testing on localhost 
+# TODO: logs, understand bg processes, server should run in bg?
+# TODO: Trap and Relay all signals SIGTSTP, SIGHUP etc. to incoming as kill -SIG -$$ 
+# TODO: EOF | gpg -c | EOF
+# TODO: prune unnecessities, github doesnt support large commits messages. So no commit msg file only string
+# TODO: brb, hey, abort
+# TODO: take and give remote_path local_path >> homebuild - stream DL, pipe, read -st, tail -F, find --delete, nc; ncat @ sdf.org
+#
 
 GIBBERISH_filesys(){
   export GIBBERISH_DIR="${HOME}/.gibberish/${GIBBERISH}"
@@ -84,16 +92,16 @@ GIBBERISH_read(){
 export -f GIBBERISH_read
 
 GIBBERISH_prelaunch(){
-  [[ "${GIBBERISH}" == "${fetch_branch}" ]] || { echo "Cannot run for GIBBERISH=${GIBBERISH}" >&2 ; return 1;}
+  [[ "${GIBBERISH}" == "${fetch_branch}" ]] || { echo "Cannot run for GIBBERISH=${GIBBERISH}" >&2 ; exit 1;}
   GIBBERISH_filesys
 
-  cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; return 1;}
+  cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
-    { echo 'Pull failed' >&2 ; return 1;}
+    { echo 'Pull failed' >&2 ; exit 1;}
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
-  mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; return 1;}
+  mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
   touch "${push_lock}"
   touch "${commit_lock}"
   touch "${checkout_lock}"
@@ -120,7 +128,7 @@ gibberish(){
   export push_branch="server"
   GIBBERISH_prelaunch
 
-  trap 'rm "${incoming}"; kill -9 -$$' return exit
+  trap 'rm "${incoming}"; kill -9 -$$' exit
   
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
