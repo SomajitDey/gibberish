@@ -59,7 +59,8 @@ GIBBERISH_commit(){
   (
   cd "${outgoing_dir}"
   flock -x "${write_lock}" mv -f "${outgoing}" "./${iofile}" &>/dev/null
-  git commit --no-verify --no-gpg-sign --allow-empty-message -m '' "./${iofile}" &>/dev/null
+  git add  "./${iofile}"
+  git commit --no-verify --no-gpg-sign --allow-empty-message -m '' &>/dev/null
   )
 }
 export -f GIBBERISH_commit
