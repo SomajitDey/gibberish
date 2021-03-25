@@ -50,6 +50,7 @@ GIBBERISH_fetchd(){
   
   fetch(){
     while true;do
+      sleep 1 # This is just to factor in network latency
       git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || continue
       flock -x "${checkout_lock}" -c checkout &
     done;}
@@ -119,7 +120,6 @@ GIBBERISH_prelaunch(){
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
-  cd "${OLDPWD}"
   
   mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
   touch "${push_lock}"
@@ -143,9 +143,10 @@ gibberish-server(){
   export PROMPT_COMMAND='tty=$(tty); echo ${tty//\/dev\//} > $ttyfile; echo $$ > $pidfile'
   export PS0="$(tput cuu1 ; tput ed)"
 # If client sends exit or logout, new shell launches 
+  cd
   while true; do
-    bash -i < <(GIBBERISH_read) |& GIBBERISH_write
-  done
+    bash -i
+  done < <(GIBBERISH_read) |& GIBBERISH_write
   )
   rm "${incoming}"
   echo 'Server killed'

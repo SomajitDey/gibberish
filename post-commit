@@ -2,6 +2,7 @@
 
 push(){
   cd "${outgoing_dir}"
+      sleep 1 # This is just to factor in network latency
   until git push --quiet --no-verify origin "${push_branch}"; do
     git pull --rebase --quiet --no-verify origin "${push_branch}"
   done
