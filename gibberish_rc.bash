@@ -111,8 +111,12 @@ GIBBERISH_prelaunch(){
   GIBBERISH_filesys
 
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
+
+# Sync:
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
-    { echo 'Pull failed' >&2 ; exit 1;}
+    { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
+  git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
+    { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
 
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
@@ -141,6 +145,7 @@ gibberish-server(){
     bash -i < <(GIBBERISH_read) |& GIBBERISH_write
   done
   )
+  rm "${incoming}"
   echo 'Server killed'
 }
 export -f gibberish-server
@@ -151,7 +156,7 @@ gibberish(){
   GIBBERISH_prelaunch
 
   (
-  trap 'rm "${incoming}"; kill -9 -"${BASHPID}"' exit
+  trap 'rm "${incoming}"; pkill -9 -P "${BASHPID}"' exit
   
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
