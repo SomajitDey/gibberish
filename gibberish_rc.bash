@@ -14,7 +14,6 @@ GIBBERISH_filesys(){
   export iofile="io.txt"
   export incoming="${GIBBERISH_DIR}/incoming.fifo"
   export outgoing="${GIBBERISH_DIR}/outgoing.txt"
-  export push_lock="${GIBBERISH_DIR}/push.lock"
   export write_lock="${GIBBERISH_DIR}/write.lock"
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
   export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
@@ -124,7 +123,6 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
   
   mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
-  touch "${push_lock}"
   touch "${commit_lock}"
   touch "${checkout_lock}"
   touch "${write_lock}"
