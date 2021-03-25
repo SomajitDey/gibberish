@@ -43,7 +43,7 @@ GIBBERISH_fetchd(){
         # Otherwise, the results would be pushed
         bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write) &
       fi
-      [[ "${?}" == 0 ]] && git tag -d last_read &>/dev/null && git tag last_read "${commit}"
+      git tag -d last_read &>/dev/null && git tag last_read "${commit}"
     done
   }
   export -f checkout
@@ -87,11 +87,11 @@ GIBBERISH_write(){
     IFS= read -r -n "${buffer}" -t "${timeout}" line
     if [[ $? == 0 ]]; then
       # Timed readline success implies input ends with a newline (default delimiter)
-      flock "${write_lock}" -c 'echo "${line}" >> "${outgoing}"'
+      flock -x "${write_lock}" -c 'echo "${line}" >> "${outgoing}"'
     else
       # Failure means there are still characters to be read. Hence no trailing newline
       [[ -z "${line}" ]] && continue
-      flock "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
+      flock -x "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
     fi
     flock -x "${commit_lock}" -c GIBBERISH_commit &
   done
@@ -108,17 +108,17 @@ export -f GIBBERISH_read
 
 GIBBERISH_prelaunch(){
   [[ "${GIBBERISH}" == "${fetch_branch}" ]] || { echo "Cannot run for GIBBERISH=${GIBBERISH}" >&2 ; exit 1;}
-  GIBBERISH_filesys
-
-  cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
 
 # Sync:
+
+  cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
+  until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
+
+  cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
-
-  until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
   mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
@@ -130,12 +130,14 @@ GIBBERISH_prelaunch(){
 export -f GIBBERISH_prelaunch
 
 gibberish-server(){
+  echo "To kill me, execute from another terminal: pkill -KILL -P ${BASHPID}"
   export fetch_branch="server"
   export push_branch="client"
-  GIBBERISH_prelaunch
-  echo "To kill me, execute from another terminal: pkill -KILL -P ${BASHPID}"
+  GIBBERISH_filesys
 
   (
+  GIBBERISH_prelaunch
+
   GIBBERISH_fetchd
   
   export PROMPT_COMMAND='tty=$(tty); echo ${tty//\/dev\//} > $ttyfile; echo $$ > $pidfile'
@@ -153,9 +155,11 @@ export -f gibberish-server
 gibberish(){
   export fetch_branch="client"
   export push_branch="server"
-  GIBBERISH_prelaunch
+  GIBBERISH_filesys
 
   (
+  GIBBERISH_prelaunch
+
   trap 'rm "${incoming}"; pkill -9 -P "${BASHPID}"' exit
   
   GIBBERISH_fetchd
