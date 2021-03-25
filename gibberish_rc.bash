@@ -117,11 +117,13 @@ GIBBERISH_prelaunch(){
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
+  cd ~-
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
-  
+  cd "${OLDPWD}"
+
   mkfifo "${incoming}" || { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
   touch "${commit_lock}"
   touch "${checkout_lock}"

@@ -83,7 +83,7 @@ ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
 grep -q -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
-"${run_command}"
+${run_command}
 case "${config}" in 
   server) echo 'Command to launch: gibberish-server';;
   client) echo 'Command to launch: gibberish';;
