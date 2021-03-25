@@ -52,7 +52,7 @@ GIBBERISH_fetchd(){
     while true;do
       sleep 1 # This is just to factor in network latency
       git fetch --quiet origin "${fetch_branch}" || continue
-      git diff --quiet FETCH_HEAD && continue
+      git diff --quiet HEAD FETCH_HEAD && continue
       git merge --quiet --ff-only --no-verify FETCH_HEAD || continue
       flock -x "${checkout_lock}" -c checkout &
     done;}
