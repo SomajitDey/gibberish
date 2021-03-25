@@ -168,7 +168,8 @@ gibberish(){
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
 
-  echo 'echo "Welcome to GIBBERISH-server"' >> "${outgoing}"
+  echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}"
+  flock -x "${commit_lock}" -c GIBBERISH_commit &
   local cmd
   while read -re cmd ; do
     [[ -z "${cmd}" ]] && continue
