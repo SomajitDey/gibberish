@@ -18,6 +18,10 @@ GIBBERISH_filesys(){
   export write_lock="${GIBBERISH_DIR}/write.lock"
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
   export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
+  if [[ "${GIBBERISH}" == "server" ]]; then
+    export pidfile="${GIBBERISH_DIR}/pid"
+    export ttyfile="${GIBBERISH_DIR}/tty"
+  fi
 }
 export -f GIBBERISH_filesys
 
@@ -39,9 +43,9 @@ GIBBERISH_fetchd(){
         # Otherwise, the results would be pushed
         bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write) &
       fi
+      [[ "${?}" == 0 ]] && git tag -d last_read &>/dev/null && git tag last_read "${commit}"
     done
-    if [[ -z "${commit}" ]]; then return 1 ; fi
-    git tag -d last_read &>/dev/null; git tag last_read "${commit}"; }
+  }
   export -f checkout
   
   fetch(){
@@ -110,7 +114,6 @@ GIBBERISH_prelaunch(){
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo 'Pull failed' >&2 ; exit 1;}
 
-# Consider:  if ! git show -s --pretty= last_read 2>/dev/null; then git tag last_read; fi
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
@@ -126,14 +129,19 @@ gibberish-server(){
   export fetch_branch="server"
   export push_branch="client"
   GIBBERISH_prelaunch
+  echo "To kill me, execute from another terminal: pkill -KILL -P ${BASHPID}"
 
+  (
   GIBBERISH_fetchd
   
+  export PROMPT_COMMAND='tty=$(tty); echo ${tty//\/dev\//} > $ttyfile; echo $$ > $pidfile'
   export PS0="$(tput cuu1 ; tput ed)"
 # If client sends exit or logout, new shell launches 
   while true; do
     bash -i < <(GIBBERISH_read) |& GIBBERISH_write
   done
+  )
+  echo 'Server killed'
 }
 export -f gibberish-server
 
