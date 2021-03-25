@@ -35,12 +35,13 @@ GIBBERISH_fetchd(){
       # Code for such special commit: git commit --allow-empty -F script.bash
       # Commit message should be an empty string otherwise
       if [[ -z "$(git log -1 --pretty=%B "${commit}")" ]]; then
-        git restore --quiet --source="${commit}" "./${iofile}"
+        # Update worktree only
+        git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
         cat "./${iofile}" > "${incoming}" # TODO: Should be gpg instead of cat; This is blocking
       else
         # To show results to localhost, redirect stdout and stderr to fd 3 as: command &>&3
         # Otherwise, the results would be pushed
-        bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write) &
+        bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write)
       fi
       git tag -d last_read &>/dev/null && git tag last_read "${commit}"
     done
@@ -52,7 +53,8 @@ GIBBERISH_fetchd(){
       sleep 1 # This is just to factor in network latency
       git fetch --quiet origin "${fetch_branch}" || continue
       git diff --quiet HEAD FETCH_HEAD && continue
-      git reset --quiet FETCH_HEAD || continue
+      # git-reset doesn't touch worktree, hence doesn't conflict with ongoing checkout function unlike git-merge
+      git reset --mixed --quiet FETCH_HEAD
       flock -x "${checkout_lock}" -c checkout &
     done;}
 
@@ -132,7 +134,7 @@ GIBBERISH_prelaunch(){
 export -f GIBBERISH_prelaunch
 
 gibberish-server(){
-  echo "To kill me, execute from another terminal: pkill -KILL -P ${BASHPID}"
+  echo "To kill me, execute from another terminal: kill -KILL -${BASHPID}"
   export fetch_branch="server"
   export push_branch="client"
   GIBBERISH_filesys
@@ -163,7 +165,7 @@ gibberish(){
   (
   GIBBERISH_prelaunch
 
-  trap 'rm "${incoming}"; pkill -9 -P "${BASHPID}"' exit
+  trap 'rm "${incoming}"; kill -9 "-${BASHPID}"' exit
   
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
