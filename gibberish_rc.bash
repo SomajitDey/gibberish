@@ -5,7 +5,7 @@
 # TODO: prune unnecessities, github doesnt support large commits messages. So no commit msg file only string
 # TODO: brb, hey, abort
 # TODO: take and give remote_path local_path >> homebuild - stream DL, pipe, read -st, tail -F, find --delete, nc; ncat @ sdf.org
-#
+# TODO: Decide on git tag
 
 GIBBERISH_filesys(){
   export GIBBERISH_DIR="${HOME}/.gibberish/${GIBBERISH}"
@@ -75,10 +75,20 @@ GIBBERISH_hook_commit(){
 export -f GIBBERISH_hook_commit
 
 GIBBERISH_write(){
-# Append to path=$outgoing even if it is moved/unlinked anytime
-  local line
-  while IFS= read -r line; do
-    flock -x "${write_lock}" echo "${line}" >> "${outgoing}"
+# This function dumps the input stream to $outgoing even if the path gets unlinked.
+  local timeout="1" # Interval for polling
+  local buffer="5000" # Something ridiculously big, such that nothing can write this no. of characters within $timeout seconds
+  declare -x line
+  while :; do
+    IFS= read -r -n "${buffer}" -t "${timeout}" line
+    if [[ $? == 0 ]]; then
+      # Timed readline success implies input ends with a newline (default delimiter)
+      flock "${write_lock}" -c 'echo "${line}" >> "${outgoing}"'
+    else
+      # Failure means there are still characters to be read. Hence no trailing newline
+      [[ -z "${line}" ]] && continue
+      flock "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
+    fi
     flock -x "${commit_lock}" -c GIBBERISH_commit &
   done
 }
@@ -99,6 +109,8 @@ GIBBERISH_prelaunch(){
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo 'Pull failed' >&2 ; exit 1;}
+
+# Consider:  if ! git show -s --pretty= last_read 2>/dev/null; then git tag last_read; fi
   until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done
   cd "${OLDPWD}"
   
@@ -117,9 +129,10 @@ gibberish-server(){
 
   GIBBERISH_fetchd
   
+  export PS0="$(tput cuu1 ; tput ed)"
 # If client sends exit or logout, new shell launches 
   while true; do
-    bash -i < <(GIBBERISH_read) &> >(GIBBERISH_write)
+    bash -i < <(GIBBERISH_read) |& GIBBERISH_write
   done
 }
 export -f gibberish-server
@@ -129,16 +142,19 @@ gibberish(){
   export push_branch="server"
   GIBBERISH_prelaunch
 
-  trap 'rm "${incoming}"; kill -9 -$$' exit
+  (
+  trap 'rm "${incoming}"; kill -9 -"${BASHPID}"' exit
   
   GIBBERISH_fetchd
   (GIBBERISH_read &) # Sub-shell is invoked so that pid of bg job is not shown in tty
 
+  echo 'echo "Welcome to GIBBERISH-server"' >> "${outgoing}"
   local cmd
   while read -re cmd ; do
     [[ -z "${cmd}" ]] && continue
-    (tput cuu1; tput el1; tput el)>/dev/tty
-    echo "${cmd}"
-  done | GIBBERISH_write
+    flock -x "${write_lock}" echo "${cmd}" >> "${outgoing}"
+    flock -x "${commit_lock}" -c GIBBERISH_commit &
+  done
+  )
 }
 export -f gibberish
