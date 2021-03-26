@@ -46,28 +46,25 @@ GIBBERISH_fetchd(){
     # Don't worry that FETCH_HEAD might be rewritten by GIBBERISH_fetch_loop when the above runs.
     # Network time taken by git-fetch makes this a non-issue.
     
+    # Read new commits chronologically
     local commit
     for commit in $(git rev-list last_read.."${fetch_branch}"); do
-
       # Executable code (hook) can be passed through commit message.
       # Use-case: relay interrupt signals raised by user; file transfer in background.
       # Commit message should be an empty string otherwise
-      if [[ -z "$(git log -1 --pretty=%B "${commit}")" ]]; then
-
+      commit_msg="$(git log -1 --pretty=%B "${commit}")"
+      if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
         git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
         
         # Any gpg decryption should be added here. cat is just a proxy for now
         cat "./${iofile}" > "${incoming}"
-
       else
-
         # Execute code supplied as commit message. This commit won't contain any other code
         # To show results to localhost, redirect stdout and stderr to fd 3 as: command &>&3
         # Otherwise, the results would be pushed
-        bash  <(git log -1 --pretty=%B "${commit}") 3>"${incoming}" &> >(GIBBERISH_write)
+        eval "${commit_msg}" 3>"${incoming}" &> >(GIBBERISH_write)
       fi
-
       # Atomic tag update, such that there is always a last_read tag 
       echo "${commit}" > "${last_read_tag}"
       mv -f "${last_read_tag}" ".git/refs/tags/last_read"
