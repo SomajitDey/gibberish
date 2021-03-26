@@ -113,18 +113,12 @@ GIBBERISH_hook_commit(){
 GIBBERISH_write(){
   # This function dumps the input stream to $outgoing even if the path gets unlinked.
   local timeout="1" # Interval for polling
-  local buffer="5000" # Something ridiculously big, such that nothing can write this no. of characters within $timeout seconds
   declare -x line
-  while :; do
-    IFS= read -r -n "${buffer}" -t "${timeout}" line
-    if [[ $? == 0 ]]; then
-      # Timed readline success implies input ends with a newline (default delimiter)
-      flock -x "${write_lock}" -c 'echo "${line}" >> "${outgoing}"'
-    else
-      # Failure means there are still characters to be read. Hence no trailing newline
-      [[ -z "${line}" ]] && continue
-      flock -x "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
-    fi
+  IFS=
+  while pkill -0 --pidfile "${fetch_pid_file}"; do
+    read -r -d '' -t "${timeout}" line
+    [[ -z "${line}" ]] && continue
+    flock -x "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
     GIBBERISH_commit &
   done
 }; export -f GIBBERISH_write
@@ -188,7 +182,7 @@ gibberish-server(){
 
   # To relay interrupt signals programmatically, we need to know pid of foreground processes attached to server tty
   # so that we can use pkill --term --parent. Following prompt command saves the tty and pid of current interactive bash
-  export PROMPT_COMMAND='tty=$(tty); echo ${tty//\/dev\//} > $ttyfile; echo $$ > $pidfile'
+  export PROMPT_COMMAND='tty=$(tty); echo ${tty//\/dev\//} > $ttyfile; echo $$ > $ppidfile'
 
   # PS0 is expanded after the command is read by bash but before execution begins. We exploit it to erase the command-line.
   # Erasure is necessary because the client tty will already have the cmd-line as typed by the user.
