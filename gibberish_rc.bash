@@ -20,8 +20,9 @@ GIBBERISH_filesys(){
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
   export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
   export last_read_tag="${GIBBERISH_DIR}/last_read.tmp"
-  export fetch_pid_file="${GIBBERISH_DIR}/fetch.pid"
-  export bashpidfile="${GIBBERISH_DIR}/bashpid"
+  export fetch_pid_file="${GIBBERISH_DIR}/fetch.pid" # Holds pid of GIBBERISH_fetch_loop
+  export bashpidfile="${GIBBERISH_DIR}/bashpid" # Holds pid of user's current interactive bash in server
+  export brbtag="${GIBBERISH_DIR}/brb.tmp"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -35,11 +36,12 @@ GIBBERISH_fetchd(){
 
     # Read new commits chronologically
     local commit
-    for commit in $(git rev-list last_read.."${fetch_branch}"); do
+    for commit in $(git rev-list --reverse last_read.."${fetch_branch}"); do
       # Executable code (hook) can be passed through commit message.
       # Use-case: relay interrupt signals raised by user; file transfer in background.
       # Commit message should be an empty string otherwise
       commit_msg="$(git log -1 --pretty=%B "${commit}")"
+      [[ -e "${brbtag}" ]] && return
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
         git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
@@ -143,7 +145,7 @@ GIBBERISH_prelaunch(){
   git restore "./${iofile}"
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
-  until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
+  [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
   cd ~-
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
@@ -151,7 +153,7 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
   cd "${OLDPWD}"
 
-  rm -f "${incoming}" "${outgoing}" ; mkfifo "${incoming}"
+  rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd
@@ -172,6 +174,7 @@ gibberish-server(){
   
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
   ( flock --nonblock 200 || { echo "Another instance running"; exit;}
+  export base_shell_pid="${BASHPID}" # This records the current subshell pid
   GIBBERISH_prelaunch
   
   cd "${HOME}" # So that the client is at the home directory on first connection to server 
@@ -200,14 +203,15 @@ gibberish(){
 
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
   ( flock --nonblock 200 || { echo "Another instance running"; exit;}
+  echo 'Connecting...'
   GIBBERISH_prelaunch
   
   # UI (output-end)
   { GIBBERISH_read &} 2>/dev/null # Redirection of stderr is so that pid of bg job is not shown in tty
 
-  echo 'Connecting...'
-  echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}"; GIBBERISH_commit
-  
+  [[ -e "${brbtag}" ]] || { echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit ;}
+  rm -f  "${brbtag}"
+
   # Trap terminal based signals to relay them to server foreground process
   trap 'GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"' HUP
 
@@ -224,11 +228,15 @@ gibberish(){
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re cmd
     case "${cmd}" in
-    exit|logout|quit|bye|hup)
+    exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
       stty "${saved_stty_config}" # Bring back original key-binding; we could also use (if needed): stty intr ^C
-      echo "Sending SIGHUP to server..."
-      GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"
+      if [[ "${cmd}" == brb ]]; then
+        touch "${brbtag}"
+      else
+        echo "Sending SIGHUP to server..."
+        GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"
+      fi
       break
       ;;
     ping|hey|hello|hi)
@@ -248,7 +256,7 @@ GIBBERISH_fg_kill(){
   # Brief: Send signal specified as parameter to foreground processes in server.
   local SIG="${1}"
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
-  local fg_pgid="$(ps --pid "$(awk NR==1 "${bashpidfile}")" -o tpgid=)"
+  local fg_pgid="$(ps --pid "${base_shell_pid}" -o tpgid=)"
   pkill -"${SIG}" --pgroup "${fg_pgid}" 2>/dev/null # Relay signal to foreground process group of user in server
   # Relay signal to current bash in server that user is interacting with only if HUP
   [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
