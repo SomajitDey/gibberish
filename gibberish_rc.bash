@@ -225,6 +225,7 @@ gibberish(){
     read -re cmd
     case "${cmd}" in
     exit|logout|quit|bye|hup)
+      pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
       stty "${saved_stty_config}" # Bring back original key-binding; we could also use (if needed): stty intr ^C
       echo "Sending SIGHUP to server..."
       GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"
