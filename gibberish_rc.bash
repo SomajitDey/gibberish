@@ -185,8 +185,8 @@ gibberish-server(){
   export PS0="$(tput cuu1 ; tput ed)"
 
   # If client sends exit or logout, new shell must launch for a fresh new user session. Hence loop follows.
-  local loop=true ; trap 'loop=false' INT TERM QUIT HUP
-  while ${loop} && pkill -0 --pidfile "${fetch_pid_file}"; do
+  trap 'kill -KILL $BASHPID' HUP
+  while pkill -0 --pidfile "${fetch_pid_file}"; do
     bash -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
     # Also user won't get a PS1 prompt after execution of her/his command finishes or notification when bg jobs exit
   done < <(GIBBERISH_read) |& GIBBERISH_write
