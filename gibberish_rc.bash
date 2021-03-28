@@ -151,14 +151,13 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
   cd "${OLDPWD}"
 
-  [[ -p "${incoming}" ]] && { echo 'Pipe exists: May be another session running' >&2 ; exit 1;}
-  mkfifo "${incoming}"
+  rm -f "${incoming}" "${outgoing}" ; mkfifo "${incoming}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd
 
   # Trap exit from main sub-shell body of gibberish and gibberish-server
-  trap 'pkill -TERM --parent "${BASHPID}"; echo -n > "${incoming}"; rm -f "${incoming}"' exit
+  trap 'pkill -TERM --parent "${BASHPID}"; echo -n > "${incoming}"' exit
   # INT makes bash exit fg loops; TERM exits bg loops; echo -n sends EOF to any proc listening to pipe
   return
 }; export -f GIBBERISH_prelaunch
@@ -172,7 +171,8 @@ gibberish-server(){
   export push_branch="client"
   
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
-  ( GIBBERISH_prelaunch
+  ( flock --nonblock 200 || { echo "Another instance running"; exit;}
+  GIBBERISH_prelaunch
   
   cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
@@ -190,7 +190,7 @@ gibberish-server(){
     bash -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
     # Also user won't get a PS1 prompt after execution of her/his command finishes or notification when bg jobs exit
   done < <(GIBBERISH_read) |& GIBBERISH_write
-  exit )
+  exit ) 200>"${HOME}/.gibberish-server.lock"
 }; export -f gibberish-server
 
 gibberish(){
@@ -199,7 +199,8 @@ gibberish(){
   export push_branch="server"
 
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
-  ( GIBBERISH_prelaunch
+  ( flock --nonblock 200 || { echo "Another instance running"; exit;}
+  GIBBERISH_prelaunch
   
   # UI (output-end)
   { GIBBERISH_read &} 2>/dev/null # Redirection of stderr is so that pid of bg job is not shown in tty
@@ -238,7 +239,7 @@ gibberish(){
     esac
   done
   echo "GIBBERISH session ended"
-  exit )
+  exit ) 200>"${HOME}/.gibberish-client.lock"
 }; export -f gibberish
 
 GIBBERISH_fg_kill(){
