@@ -209,14 +209,15 @@ gibberish(){
   echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}"; GIBBERISH_commit
   
   # Trap terminal based signals to relay them to server foreground process
-  trap 'GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"' TSTP
-  trap 'GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' QUIT
   trap 'GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"' HUP
 
   # Trapping SIGINT is of no use as that would cause bash to exit the following input loop
   # Hence, we first prevent Control-C from raising SIGINT; then bind the key-combination to appropriate callback
   local saved_stty_config="$(stty -g)"
   stty intr undef ; bind -x '"\C-C": GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
+  # Similarly...
+  stty susp undef ; bind -x '"\C-Z": GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
+  stty quit undef ; bind -x '"\C-E": GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
 
   # UI (input-end)
   local cmd
@@ -248,5 +249,6 @@ GIBBERISH_fg_kill(){
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
   local fg_pgid="$(ps --pid "$(awk NR==1 "${bashpidfile}")" -o tpgid=)"
   pkill -"${SIG}" --pgroup "${fg_pgid}" 2>/dev/null # Relay signal to foreground process group of user in server
-  pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null # Relay signal to current bash in server that user is interacting with
+  # Relay signal to current bash in server that user is interacting with only if HUP
+  [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
 }; export -f GIBBERISH_fg_kill
