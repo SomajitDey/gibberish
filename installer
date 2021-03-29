@@ -51,6 +51,8 @@ while read -p '1. Server 2. Client: ' -n1 choice ; do
 done
 echo
 
+[[ -z "${config}" ]] && echo 'Cannot proceed without Server/Client choice. Retry' && exit
+
 if ! "${localhost}"; then
   echo 'Make sure you are connected to internet. Press any key after that.'
   read -sn1
@@ -61,7 +63,17 @@ export GIBBERISH="${config}"
 GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
 mkdir -p "${GIBBERISH_DIR}"
-echo "${pass}" > "${patfile}"
+
+if [[ -n "${pass}" ]]; then
+  while read -p 'Do you want encrytion?(y/n) :' -n1 choice; do
+    case "${choice}" in
+      y|Y) echo "${pass}" > "${patfile}"; break;;
+      n|N) break;;
+      *) echo 'Tip: Type y for yes and n for no';;
+    esac
+  done
+  echo
+fi
 
 git clone "${fetch_url}" "${incoming_dir}" || { echo exiting; exit 1;}
 

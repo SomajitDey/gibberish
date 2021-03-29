@@ -47,7 +47,11 @@ GIBBERISH_fetchd(){
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
         git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
-        gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}"
+        if [[ -e "${patfile}" ]]; then
+          gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}"
+        else
+          cat "./${iofile}" > "${incoming}"
+        fi
       else
         # Execute code supplied as commit message. This commit won't contain any other code
         eval "${commit_msg}"
@@ -90,9 +94,13 @@ GIBBERISH_commit(){
   # Corresponding push is handled by post-commit hook installed with installer
   [[ -e "${outgoing}" ]] || return
   ( flock --exclusive 200; cd "${outgoing_dir}"
-  flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
-  rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
-  gpg --batch --quiet --armor --output "./${iofile}" --passphrase-file "${patfile}" --symmetric "${snapshot}"
+  if [[ -e "${patfile}" ]]; then
+    flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
+    rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
+    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-file "${patfile}" --symmetric "${snapshot}"
+  else
+    flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
+  fi
   git add  "./${iofile}"
   git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
@@ -156,7 +164,7 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
   cd "${OLDPWD}"
 
-  rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"; touch "${patfile}"
+  rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd
