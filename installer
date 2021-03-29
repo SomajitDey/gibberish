@@ -20,7 +20,7 @@ read -ep 'URL: ' url
 uri="${url#*:\/\/}"
 protocol="${url%:\/\/*}"
 
-if [[ "${protocol}" == "file" ]] || [[ -n "${protocol}" ]]; then
+if [[ "${protocol}" == "file" ]] || [[ "${uri}" == "${protocol}" ]]; then
   fetch_url="${uri}"
   push_url="${uri}"
   localhost="true"
@@ -37,7 +37,7 @@ fi
 if [[ "${protocol}" == "https" ]]; then
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
-  tput cuu1; tput el1; echo 'Got your passwd.'
+  tput cuu1; tput ed; echo 'Got your passwd.'
   push_url="https://${uid}:${pass}@${uri}"
 fi
 
@@ -96,8 +96,9 @@ ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
 grep -q -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
-${run_command}
 case "${config}" in 
   server) echo 'Command to launch: gibberish-server';;
   client) echo 'Command to launch: gibberish';;
 esac
+
+echo "To use the above command right now, either open a new shell or do: $run_command"

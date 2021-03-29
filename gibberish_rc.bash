@@ -92,8 +92,9 @@ GIBBERISH_fetchd(){
 
 GIBBERISH_commit(){
   # Corresponding push is handled by post-commit hook installed with installer
-  [[ -e "${outgoing}" ]] || return
+  [[ -e "${outgoing}" ]] || return # Check existence to decide whether to wait for lock at all
   ( flock --exclusive 200; cd "${outgoing_dir}"
+  [[ -e "${outgoing}" ]] || exit # Check existence after lock has been acquired
   if [[ -e "${patfile}" ]]; then
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
     rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
