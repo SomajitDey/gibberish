@@ -23,6 +23,8 @@ GIBBERISH_filesys(){
   export fetch_pid_file="${GIBBERISH_DIR}/fetch.pid" # Holds pid of GIBBERISH_fetch_loop
   export bashpidfile="${GIBBERISH_DIR}/bashpid" # Holds pid of user's current interactive bash in server
   export brbtag="${GIBBERISH_DIR}/brb.tmp"
+  export patfile="${GIBBERISH_DIR}/access_token" # Holds passphrase/access-token of cloud repo
+  export snapshot="${GIBBERISH_DIR}/pre-gpg-encryption.tmp"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -45,9 +47,7 @@ GIBBERISH_fetchd(){
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
         git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
-        
-        # Any gpg decryption should be added here. cat is just a proxy for now
-        cat "./${iofile}" > "${incoming}"
+        gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}"
       else
         # Execute code supplied as commit message. This commit won't contain any other code
         eval "${commit_msg}"
@@ -60,6 +60,8 @@ GIBBERISH_fetchd(){
   
   GIBBERISH_fetch_loop(){
     # Brief: Iterative fetching from remote (origin). Update branch head and index.
+    # When fetch must fail, e.g. due to some connectivity issue or if git crashes, it fails loudly and quits
+    # Because fetch is the beating heart of GiBBERISh, most other loops check if fetch is alive before iterating
     
     cd "${incoming_dir}"
 
@@ -86,10 +88,11 @@ GIBBERISH_fetchd(){
 
 GIBBERISH_commit(){
   # Corresponding push is handled by post-commit hook installed with installer
-  # Any gpg encryption (--symmetric) should be added here
   [[ -e "${outgoing}" ]] || return
   ( flock --exclusive 200; cd "${outgoing_dir}"
-  flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
+  flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
+  rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
+  gpg --batch --quiet --armor --output "./${iofile}" --passphrase-file "${patfile}" --symmetric "${snapshot}"
   git add  "./${iofile}"
   git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
@@ -121,9 +124,9 @@ GIBBERISH_read(){
   # Brief: Copy input stream from $incoming to output. If input pipe closes, reopen pipe.
   # Keep output pipe/fd open always. Behavior akin to 'tail -F', but for pipes.  
 
-  # We could have used tail -q -n=+1 -F "${incoming}" 2>/dev/null with $incoming being a 
-  # text file instead of fifo. It would however be polling the file, hence busy wait,
-  # which may be undesirable.
+  # We could have used tail -n +1 -F "${incoming}" --pid=<GIBBERISH_fetch_loop pid> 2>/dev/null
+  # with $incoming being a text file rather than fifo. It would however be polling the file, 
+  # hence busy wait, which might be undesirable.
 
   # Because $incoming is a named pipe, cat would die once the process writing to the pipe finishes.
   # Hence the loop, but only as long as GIBBERISH_fetch_loop is on. 
@@ -153,7 +156,7 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
   cd "${OLDPWD}"
 
-  rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
+  rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"; touch "${patfile}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd

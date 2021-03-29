@@ -61,6 +61,7 @@ export GIBBERISH="${config}"
 GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
 mkdir -p "${GIBBERISH_DIR}"
+echo "${pass}" > "${patfile}"
 
 git clone "${fetch_url}" "${incoming_dir}" || { echo exiting; exit 1;}
 
