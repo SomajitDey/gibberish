@@ -48,7 +48,8 @@ GIBBERISH_fetchd(){
         # When commit message is empty, update worktree only
         git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
         if [[ -e "${patfile}" ]]; then
-          gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}"
+          gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
+            || echo 'GIBBERISH: Decryption failed. Perhaps client and server are not using the same passphrase/access-token'
         else
           cat "./${iofile}" > "${incoming}"
         fi
