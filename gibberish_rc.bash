@@ -178,6 +178,7 @@ GIBBERISH_prelaunch(){
 gibberish-server(){
   echo "This server needs to run in foreground."
   echo "To exit, simply close the terminal window."
+  echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
 
   # Config specific initialization
   export fetch_branch="server"
@@ -203,7 +204,7 @@ gibberish-server(){
   while pkill -0 --pidfile "${fetch_pid_file}"; do
     bash -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
     # Also user won't get a PS1 prompt after execution of her/his command finishes or notification when bg jobs exit
-  done < <(GIBBERISH_read) |& GIBBERISH_write
+  done < <(GIBBERISH_read | tee /dev/tty) |& tee /dev/tty | GIBBERISH_write
   exit ) 200>"${HOME}/.gibberish-server.lock"
 }; export -f gibberish-server
 
