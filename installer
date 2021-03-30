@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# This is the installer script for GiBBERISH - Git and Bash Based Encrypted Remote Interactive Shell
+# Author: Somajit Dey 2021 <dey.somajit@gmail.com>
+# Online repository: https://github.com/SomajitDey/gibberish
+# Bug reports: Raise an issue at the repository or email the author directly
+# Copyright (C) 2021 Somajit Dey
+# License: GPL-3.0-or-later <https://github.com/SomajitDey/gibberish>
+# Disclaimer: This software comes with ABSOLUTELY NO WARRANTY; use at your own risk.
+
 export rcfile='gibberish_rc.bash'
 
 command -v git &>/dev/null || { echo 'Install git' ; exit 1;}

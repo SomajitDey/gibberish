@@ -1,11 +1,10 @@
-# TODO: sleep <delay> to mimic latency in pull & push during testing on localhost 
-# TODO: logs, understand bg processes, server should run in bg?
-# TODO: Trap and Relay all signals SIGTSTP, SIGHUP etc. to incoming as kill -SIG -$$ 
-# TODO: EOF | gpg -c | EOF
-# TODO: prune unnecessities, github doesnt support large commits messages. So no commit msg file only string
-# TODO: brb, hey, abort
-# TODO: take and give remote_path local_path >> homebuild - stream DL, pipe, read -st, tail -F, find --delete, nc; ncat @ sdf.org
-# TODO: Decide on git tag
+# This is the library for GiBBERISH - Git and Bash Based Encrypted Remote Interactive Shell
+# Author: Somajit Dey 2021 <dey.somajit@gmail.com>
+# Online repository: https://github.com/SomajitDey/gibberish
+# Bug reports: Raise an issue at the repository or email the author directly
+# Copyright (C) 2021 Somajit Dey
+# License: GPL-3.0-or-later <https://github.com/SomajitDey/gibberish>
+# Disclaimer: This software comes with ABSOLUTELY NO WARRANTY; use at your own risk.
 
 GIBBERISH_filesys(){
   # Brief: Export important file definitions
