@@ -231,10 +231,10 @@ gibberish(){
   # Trapping SIGINT is of no use as that would cause bash to exit the following input loop
   # Hence, we first prevent Control-C from raising SIGINT; then bind the key-combination to appropriate callback
   local saved_stty_config="$(stty -g)"
-  stty intr undef ; bind -x '"\C-C": GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
+  stty intr undef ; bind -x '"\C-C": echo -n ^C; GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
   # Similarly...
-  stty susp undef ; bind -x '"\C-Z": GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
-  stty quit undef ; bind -x '"\C-E": GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
+  stty susp undef ; bind -x '"\C-Z": echo -n ^Z; GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
+  stty quit undef ; bind -x '"\C-E": echo -n ^E; GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
 
   # UI (input-end)
   local cmd
@@ -267,7 +267,7 @@ gibberish(){
 
 GIBBERISH_fg_kill(){
   # Brief: Send signal specified as parameter to foreground processes in server.
-  local SIG="${1}"
+  local SIG="${1}"; echo -n "GIBBERISH client sent ${SIG} "
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
   local fg_pgid="$(ps --pid "${base_shell_pid}" -o tpgid=)"
   pkill -"${SIG}" --pgroup "${fg_pgid}" 2>/dev/null # Relay signal to foreground process group of user in server
