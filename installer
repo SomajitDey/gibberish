@@ -47,8 +47,8 @@ else
   localhost="false"
 fi
 
-if [[ "${protocol}" == "ssh" ]]; then
-  echo -e \\n'No support for ssh:// yet. Lets use https:// instead'
+if [[ "${protocol}" =~ ^(ssh|git)$ ]]; then
+  echo -e \\n'Using https:// for push'
   protocol="https"
 fi
 

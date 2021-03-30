@@ -180,6 +180,7 @@ gibberish-server(){
   echo "This server needs to run in foreground."
   echo "To exit, simply close the terminal window."
   echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
+  export server_tty="$(tty)"
 
   # Config specific initialization
   export fetch_branch="server"
@@ -187,7 +188,7 @@ gibberish-server(){
   
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
   ( flock --nonblock 200 || { echo "Another instance running"; exit;}
-  export base_shell_pid="${BASHPID}" # This records the current subshell pid
+
   GIBBERISH_prelaunch
   
   cd "${HOME}" # So that the client is at the home directory on first connection to server 
@@ -269,7 +270,7 @@ GIBBERISH_fg_kill(){
   # Brief: Send signal specified as parameter to foreground processes in server.
   local SIG="${1}"; echo -n "GIBBERISH client sent ${SIG} "
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
-  local fg_pgid="$(ps --pid "${base_shell_pid}" -o tpgid=)"
+  local fg_pgid="$(ps --tty "${server_tty}" -o tpgid= | awk NR==1)"
   pkill -"${SIG}" --pgroup "${fg_pgid}" 2>/dev/null # Relay signal to foreground process group of user in server
   # Relay signal to current bash in server that user is interacting with only if HUP
   [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
