@@ -1,6 +1,6 @@
 # What is GiBBERISh
 
-**GiBBERISh** is a rather fitting acronym for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is just a stupid (but *free* and *easy*) way to *securely* access your Linux box from any other Linux box over the internet, granted you are willing to waste 8 or so precious seconds of your life in latency (or round trip time). 
+**GiBBERISh** is a rather fitting acronym for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is just a stupid (but *free* and *easy*) way to *securely* access your Linux box from any other Linux box over the internet, granted you are willing to waste 12 or so precious seconds of your life in latency (or round trip time). 
 
 It consists of only a short *Bash* *script* running on each of the two machines, and a free online git repository, owned and controlled by the user (such as a free repository in https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/).
 
@@ -13,7 +13,7 @@ The standard way to access a remote computer is Secure Shell or **SSH**. But, in
 
 <u>If you can afford any of the above, then GiBBERISh is definitely not for you.</u> However, if you are like me, who doesn't want to pay for a port-forwarding or VPN service, you are probably out of luck with SSH. 
 
-However, you can still manage fine with a free remote access app, such as **TeamViewer**. <u>If you are happily using such Virtual Network Computing (VNC), then too you won't have any use for GiBBERISh.</u> I, however, faced a lot of problems connecting two different versions of Ubuntu using TeamViewer. That probably is my bad, but it seems likely that such intricate apps come with their own portability issues, apart from the fact that they usually depend on a lot of other packages, installing which might be taxing for the inexperienced user. Dependence on VNC apps thus didn't seem too reliable. I, therefore, needed, a light-weight, portable, easy to install and completely cost-FREE option to access my remote machine securely over the internet. I didn't mind the 8 s latency, as long as my main purpose of submitting jobs to the remote host was served. Hence, my DIY solution - GiBBERISh.
+However, you can still manage fine with a free remote access app, such as **TeamViewer**. <u>If you are happily using such Virtual Network Computing (VNC), then too you won't have any use for GiBBERISh.</u> I, however, faced a lot of problems connecting two different versions of Ubuntu using TeamViewer. That probably is my bad, but it seems likely that such intricate apps come with their own portability issues, apart from the fact that they usually depend on a lot of other packages, installing which might be taxing for the inexperienced user. Dependence on VNC apps thus didn't seem too reliable. I, therefore, needed, a light-weight, portable, easy to install and completely cost-FREE option to access my remote machine securely over the internet. I didn't mind the latency, as long as my main purpose of submitting jobs to the remote host was served. Hence, my DIY solution - GiBBERISh.
 
 # How it works
 
@@ -29,11 +29,11 @@ Whenever the user enters a command in client, the GiBBERISh script encrypts it w
 
 # Drawbacks:
 
-There is only one drawback inherent in this scheme. Because of the dependence on an online Git repository (such as GitHub), the time between entering a command and getting its output back is not insignificant. Fetch is fast, takes 1s or so. Push is a bit slower, 2-3 s. Adding it all up (crude estimates) :  
+Because of the dependence on an online Git repository (such as GitHub), the time between entering a command and getting its output back is not insignificant. According to my measurements, every fetch and push takes almost 3 s. Adding it all up for the round trip time, we get: 
 $$
-client Push (2.5 s) + server Fetch (1.5 s) + server Push (2.5 s) + client Fetch (1.5 s) = 8 s
+client Push (3 s) + server Fetch (3 s) + server Push (3 s) + client Fetch (3 s) = 12 s
 $$
- round trip time. I wonder if git-push/fetch can be made faster!
+in latency.
 
 # Features:
 

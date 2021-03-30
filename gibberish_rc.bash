@@ -242,7 +242,7 @@ gibberish(){
   # UI (input-end)
   local cmd
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
-    read -re cmd
+    read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
