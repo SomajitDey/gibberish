@@ -154,7 +154,7 @@ GIBBERISH_prelaunch(){
 
   # Sync/update repos:
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  git restore "./${iofile}"
+  git restore --quiet "./${iofile}" 2>/dev/null
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
@@ -231,10 +231,10 @@ gibberish(){
   # Trapping SIGINT is of no use as that would cause bash to exit the following input loop
   # Hence, we first prevent Control-C from raising SIGINT; then bind the key-combination to appropriate callback
   local saved_stty_config="$(stty -g)"
-  stty intr undef ; bind -x '"\C-C": echo -n ^C; GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
+  stty intr undef ; bind -x '"\C-C": GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
   # Similarly...
-  stty susp undef ; bind -x '"\C-Z": echo -n ^Z; GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
-  stty quit undef ; bind -x '"\C-E": echo -n ^E; GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
+  stty susp undef ; bind -x '"\C-Z": GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
+  stty quit undef ; bind -x '"\C-E": GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
 
   # UI (input-end)
   local cmd

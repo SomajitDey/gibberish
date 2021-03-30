@@ -19,11 +19,21 @@ code_dir="$(cd "${code_dir_relative}"; echo "${PWD}" )"
 
 . "${code_dir}/${rcfile}" || { echo "Missing ${rcfile}" ; exit 1;}
 
-echo 'You already have a repository in cloud, right?
-If not, create one at any of the following for free:
+echo '
+GiBBERISh requires a dedicated free Git repository hosted on cloud.
+
+If you have already created such a repository, proceed with its URL.
+
+If you have not created a repository yet, press ENTER below to exit
+this installation. Then create an empty repository at any of the
+following sites for free: 
+
 github.com, gitlab.com, sourceforge.net, bitbucket.org
+
+Note down the URL link of your newly created repository and relaunch
+this installer.
 '
-read -ep 'URL: ' url
+read -ep 'Repository URL: ' url
 [[ -z "${url}" ]] && exit
 uri="${url#*:\/\/}"
 protocol="${url%:\/\/*}"
@@ -38,18 +48,19 @@ else
 fi
 
 if [[ "${protocol}" == "ssh" ]]; then
-  echo 'No support for ssh yet. Lets use https.'
+  echo -e \\n'No support for ssh:// yet. Lets use https:// instead'
   protocol="https"
 fi
 
 if [[ "${protocol}" == "https" ]]; then
+  echo -e "\nEnter your ${uri%%\/*} credentials below. GIBBERISh will use this during git-push."
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
   tput cuu1; tput ed; echo 'Got your passwd.'
   push_url="https://${uid}:${pass}@${uri}"
 fi
 
-echo 'You shall be using this PC as'
+echo -e \\n'You shall be using this PC as'
 while read -p '1. Server 2. Client: ' -n1 choice ; do
   case "${choice}" in
     1)config="server"; talkto="client"; break;;
@@ -59,14 +70,13 @@ while read -p '1. Server 2. Client: ' -n1 choice ; do
 done
 echo
 
-[[ -z "${config}" ]] && echo 'Cannot proceed without Server/Client choice. Retry' && exit
-
 if ! "${localhost}"; then
-  echo 'Make sure you are connected to internet. Press any key after that.'
+  echo -e \\n'Make sure you are online. We will download your repository then and configure the upstream if needed.
+Press any key to confirm.'
   read -sn1
 fi
 
-echo "Configuring ${config}..."
+echo -e \\n"Configuring ${config}..."\\n
 export GIBBERISH="${config}"
 GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
@@ -83,7 +93,7 @@ if [[ -n "${pass}" ]]; then
   echo
 fi
 
-git clone "${fetch_url}" "${incoming_dir}" || { echo exiting; exit 1;}
+git clone --quiet "${fetch_url}" "${incoming_dir}" || { echo -e \\n'Git-clone failed, exiting'; exit 1;}
 
 cd "${incoming_dir}"
 git remote set-url --push origin "${push_url}"
@@ -91,22 +101,24 @@ git remote set-url --push origin "${push_url}"
 # Check if repo has atleast one commit; create a commit if there is none
 git switch --quiet "${config}" &>/dev/null || \
 (git checkout --quiet -b "${config}"
-git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}")
+git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}") || \
+{ echo -e \\n'Oops, something failed. Exiting'; exit 1;}
 
 # Create outgoing directory; checked out with appropriate branch
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
 (git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
-git push --quiet origin "${talkto}")
+git push --quiet origin "${talkto}") || \
+{ echo -e \\n'Oops, something failed. Exiting'; exit 1;}
 
 ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
-  { echo 'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
+  { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
 
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command=". ${HOME}/.${rcfile}"
 grep -q -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
 case "${config}" in 
-  server) echo 'Command to launch: gibberish-server';;
-  client) echo 'Command to launch: gibberish';;
+  server) echo -e \\n'Command to launch: gibberish-server';;
+  client) echo -e \\n'Command to launch: gibberish';;
 esac
 
-echo "To use the above command right now, either open a new shell or do: $run_command"
+echo -e \\n"To use the above command right now, either open a new shell or do: $run_command"
