@@ -146,7 +146,9 @@ GIBBERISH_read(){
 
 GIBBERISH_prelaunch(){
   # Brief: Initial setups common to both client and server
- 
+
+  echo 'Configuring...' 
+
   # Check if user is running cmd 'gibberish' for client and 'gibberish-server' for server
   [[ "${GIBBERISH}" == "${fetch_branch}" ]] || { echo "Cannot run for GIBBERISH=${GIBBERISH}" >&2 ; exit 1;}
 
@@ -177,20 +179,19 @@ GIBBERISH_prelaunch(){
 }; export -f GIBBERISH_prelaunch
 
 gibberish-server(){
-  echo "This server needs to run in foreground."
-  echo "To exit, simply close the terminal window."
-  echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
-  export server_tty="$(tty)"
-
   # Config specific initialization
   export fetch_branch="server"
   export push_branch="client"
+  export server_tty="$(tty)"
   
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
   ( flock --nonblock 200 || { echo "Another instance running"; exit;}
 
   GIBBERISH_prelaunch
-  
+
+  echo "This server needs to run in foreground."
+  echo "To exit, simply close the terminal window."
+  echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
   cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
   # To relay interrupt signals programmatically, we need to know the foreground processes group id attached to server tty
@@ -217,13 +218,14 @@ gibberish(){
 
   # Sub-shell to make sure everything is well-encapsulated. Functions can exit when aborting without closing tty
   ( flock --nonblock 200 || { echo "Another instance running"; exit;}
-  echo 'Connecting...'
+
   GIBBERISH_prelaunch
   
   # UI (output-end)
   { GIBBERISH_read &} 2>/dev/null # Redirection of stderr is so that pid of bg job is not shown in tty
 
-  [[ -e "${brbtag}" ]] || { echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit ;}
+  { [[ -e "${brbtag}" ]] && echo 'Welcome back to GIBBERISH-server' ;} || \
+  { echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit ;}
   rm -f  "${brbtag}"
 
   # Trap terminal based signals to relay them to server foreground process
@@ -271,7 +273,7 @@ GIBBERISH_fg_kill(){
   local SIG="${1}"; echo -n "GIBBERISH client sent ${SIG} "
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
   local fg_pgid="$(ps --tty "${server_tty}" -o tpgid= | awk NR==1)"
-  pkill -"${SIG}" --pgroup "${fg_pgid}" 2>/dev/null # Relay signal to foreground process group of user in server
+  pkill -${SIG} --pgroup ${fg_pgid} # Relay signal to foreground process group of user in server
   # Relay signal to current bash in server that user is interacting with only if HUP
   [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
 }; export -f GIBBERISH_fg_kill
