@@ -55,7 +55,7 @@ GIBBERISH_fetchd(){
         fi
       else
         # Execute code supplied as commit message. This commit won't contain any other code
-        eval "${commit_msg}"
+        ( eval "${commit_msg}" ) # Sub-shell isolates hook execution environment, so that the current one remains unaffected
       fi
       # Atomic tag update, such that there is always a last_read tag 
       echo "${commit}" > "${last_read_tag}"
@@ -262,7 +262,8 @@ gibberish(){
       ;;
     *)
       if [[ $1 =~ ^(take|push)$ ]]; then
-        local file_at_client="$2"; local path_at_server="$3"
+        eval local file_at_client="$2" # eval is used for enabling ~ expansion, backslash removal etc.
+        eval local path_at_server="$3"
         echo "This might take some time..."
         if GIBBERISH_UL "${file_at_client}"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
@@ -271,6 +272,11 @@ gibberish(){
           echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
           continue
         fi
+      elif [[ $1 == rc ]]; then
+        eval local script="$2" # eval is used for enabling ~ expansion, backslash removal etc.
+        [[ -f "${script}" ]] || { echo "Script doesn't exist." \
+             echo "You can enter next command now or press ENTER to get the server's prompt"; continue;}
+        cmd="$(cat "${script}")"
       fi
       # The following echo is not the bash-builtin; otherwise flock would require -c. This is for demo only. Use builtin always
       flock -x "${write_lock}" echo "${cmd}" >> "${outgoing}"; GIBBERISH_commit &
@@ -318,7 +324,8 @@ GIBBERISH_DL(){
 }; export -f GIBBERISH_DL
 
 bring(){
-  local file_at_server="$1"; local path_at_client="$2"
+  eval local file_at_server="$1" # eval is used for enabling ~ expansion, backslash removal etc.
+  eval local path_at_client="$2"
   if GIBBERISH_UL "${file_at_server}"; then
     GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client}"
   else
