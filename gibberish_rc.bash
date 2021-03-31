@@ -24,6 +24,7 @@ GIBBERISH_filesys(){
   export brbtag="${GIBBERISH_DIR}/brb.tmp"
   export patfile="${GIBBERISH_DIR}/access_token" # Holds passphrase/access-token of cloud repo
   export snapshot="${GIBBERISH_DIR}/pre-gpg-encryption.tmp"
+  export file_transfer_url="${GIBBERISH_DIR}/file_transfer_url.tmp"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -243,6 +244,7 @@ gibberish(){
   local cmd
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
+    set -- ${cmd} # This is necessary for take|push only
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
@@ -259,6 +261,17 @@ gibberish(){
       GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server'"
       ;;
     *)
+      if [[ $1 =~ ^(take|push)$ ]]; then
+        local file_at_client="$2"; local path_at_server="$3"
+        echo "This might take some time..."
+        if GIBBERISH_UL "${file_at_client}"; then
+          echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
+          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server}"
+        else
+          echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
+          continue
+        fi
+      fi
       # The following echo is not the bash-builtin; otherwise flock would require -c. This is for demo only. Use builtin always
       flock -x "${write_lock}" echo "${cmd}" >> "${outgoing}"; GIBBERISH_commit &
       ;;
@@ -277,3 +290,43 @@ GIBBERISH_fg_kill(){
   # Relay signal to current bash in server that user is interacting with only if HUP
   [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
 }; export -f GIBBERISH_fg_kill
+
+GIBBERISH_UL(){
+  # Brief: Encrypt and upload given payload
+  # Below we use transfer.sh for file hosting. If it is down, use any of the following alternatives:
+  # 0x0.st , file.io , oshi.at , tcp.st
+  # In the worst case scenario when everything is down, we can always push the payload through our Git repo
+  local payload="$1"
+  ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
+  gpg --batch --quiet --armor --output - --passphrase-file "${patfile}" --symmetric "${payload}" | \
+  curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
+  )
+}; export -f GIBBERISH_UL
+
+GIBBERISH_DL(){
+  # Brief: Download from given url and decrypt to the given local path
+  local url="${1}"
+  local copyto="${2}"
+  ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
+  curl -s -S "${url}" | gpg --batch -q -o "${copyto}" --passphrase-file "${patfile}" -d
+  )
+  if (( $? == 0 )); then
+    echo -e \\n"File transfer: COMPLETE"
+  else
+    echo -e \\n"File transfer: FAILED"
+  fi
+}; export -f GIBBERISH_DL
+
+bring(){
+  local file_at_server="$1"; local path_at_client="$2"
+  if GIBBERISH_UL "${file_at_server}"; then
+    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client}"
+  else
+    echo -e \\n"FAILED."
+  fi
+}; export -f bring
+
+pull(){
+  # Same as bring
+  bring $@
+}; export -f pull

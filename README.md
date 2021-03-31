@@ -1,8 +1,8 @@
 # What is GiBBERISh
 
-**GiBBERISh** is a rather fitting acronym for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is just a stupid (but *free* and *easy*) way to *securely* access your Linux box from any other Linux box over the internet, granted you are willing to waste 12 or so precious seconds of your life in latency (or round trip time). 
+**GiBBERISh** stands for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is just a slow (but *free*, *easy* and *portable*) way to <u>*securely* access your *Linux* computer from any other *Linux* box over the internet, when none of the machines has a public IP address</u>. <u>You can also transfer files to and fro the remote host, with end-to-end encryption.</u>
 
-It consists of only a short *Bash* *script* running on each of the two machines, and a free online git repository, owned and controlled by the user (such as a free repository in https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/).
+It consists of only a short *Bash* *script* to be run on both the hosts (viz. client and server), and a free online git repository, owned and controlled by the user (such as a free repository in https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/).
 
 # Why GiBBERISh
 
@@ -29,12 +29,7 @@ Whenever the user enters a command in client, the GiBBERISh script encrypts it w
 
 # Drawbacks:
 
-Because of the dependence on an online Git repository (such as GitHub), the time between entering a command and getting its output back is not insignificant. According to my measurements, every fetch and push takes almost 3 s. Adding it all up for the round trip time, we get: 
-$$
-client Push (3 s) + server Fetch (3 s) + server Push (3 s) + client Fetch (3 s) = 12 s
-$$
-in latency.
-
+Because of the dependence on an online Git repository (such as GitHub), the time between entering a command and getting its output back is not insignificant. From multiple measurements, I found the latency varies between 8 to 12 seconds.
 # Features:
 
 1. Doesn't require a public IP address. Both machines can be behind multiple NATs.
@@ -44,7 +39,7 @@ in latency.
 5. Easy and fast switching between local and remote environments without interrupting the remote session in any way. See *brb* in the *Keywords* section below.
 6. Relays user's keyboard-generated signals, such as Ctrl-c; Ctrl-z to server.
 7. Monitorability and overrides. If you grant someone else access to your local machine, for remote diagnostics for example, you will be shown all the commands she is executing in your terminal. You can also override those executions with Ctrl-c, Ctrl-z etc., if necessary.
-8. Secure (GPG-encrypted) file transfer from client to server and vice-versa. This is not implemented yet but will be.
+8. Secure (GPG-encrypted) file transfer from client to server and vice-versa.
 9. Forever free. Given the popularity of Git in DevOps, freemium services such as GitHub are here to stay and they probably will continue hosting small public repos for free for years to come. GiBBERISh is careful about keeping the repo size as small as possible. So, the size limit of the free-tier plans should never be an issue.
 10. Lightweight. CPU usage is minimal. Polling and busy-waits are avoided wherever possible in favor of event-driven triggers.
 11. Hassle-free installation, portability and flexibility. GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. You also hold the perpetual right to adapt the script to your needs.
@@ -95,16 +90,29 @@ gibberish
 
 again. You will be shown all the server output since the time you **brb**d, so you miss nothing. *Note*: If you enter *brb* at the command prompt, you are not given a new prompt after you return to the session. If this makes you uncomfortable, just press ENTER and wait for the server to give you another command prompt.
 
+**take | push **: See next section
+
 # File and directory transfer
 
-This is not implemented yet. But I will be encouraged to include it in future if anybody other than me uses GiBBERISh ever. The plan is to have two shell-functions/command/keywords, viz.  
+**Copying file from client to server:**
 
 ```bash
-take <local path> <remote path> # copy from client to server
-give <remote path> <local path> # copy from server to client
+take <local path> <remote path> 
+# or
+push <local path> <remote path>
 ```
 
-to transfer GPG-encrypted files and tarballs (for directories) using free ephemeral file-sharing services such as https://transfer.sh/, http://0x0.st/, https://www.file.io/, https://oshi.at/, or tcp-paste-bins such as http://tcp.st/. This can be implemented easily using *cURL*. Because, files are transferred outside of Git, the repository size doesn't get affected, however big the files might be.
+**Copying file from server to client:**
+
+```bash
+bring <remote path> <local path>
+# or
+pull <remote path> <local path>
+```
+
+To transfer directories or a collection of files, archive them first with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
+
+*NOTE*: File transfer is end-to-end encrypted with your Git credentials. Because of this security, files are transferred using free public file hosting servers so that your Git repository size remains unaffected, no matter how big the transferred files are.
 
 # Library, not executable
 
@@ -118,9 +126,9 @@ The Git repository for GiBBERISh has two linear branches, viz. server and client
 
 Every iteration of fetch triggers a checkout sequence that tracks all the new commits chronologically, restoring the corresponding version of the abovementioned text file for decryption. Upon successful decryption, the checkout function pushes the data down a pipeline to user (@client) or bash (@server), before moving on to the next commit in the git-revision-list.
 
-Note that if every user-command was passed using that single text file alone, then all the commands would end up in the queue for bash @server. To interrupt any rogue foreground process on demand, however, we need to route *kill* commands to a second, parallel shell in the server. This requires a way to commit commands in the repo other than the single text file mentioned. GiBBERISh exploits Git's commit message field for this purpose. Only those commits that carry control or interrupt signals, or any other command meant to be executed by the parallel shell, have commit messages, which hold the commands. All other commits have empty commit messages. Whether the command is destined for the main shell or the parallel, can therefore be easily ascertained by checking whether the commit message is empty or not. 
+Note that if every user-command was passed using that single text file alone, then all the commands would end up in the queue for bash @server. To relay a user-generated signal (SIGINT, SIGTSTP, SIGQUIT) to a foreground process on demand, however, we need to route *kill* commands to a second, parallel shell in the server. We, therefore, need a way to commit commands in the repo other than the single text file mentioned before. GiBBERISh exploits Git's commit message field for this purpose. Only those commits that carry the user-generated control signals, or any other command that is to be executed by the parallel shell only, would have commit messages which hold the commands themselves. All other commits have empty commit messages. Whether the commit is meant for the main shell or the parallel, can therefore be ascertained simply by checking whether the commit message is empty or not. Commands meant for the parallel shell are mostly *kill* or file-download commands. Hence they do not contain any sensitive data and are therefore not encrypted to save on time. Such commands are called *hook*s. Hooks are the only way server can make client do some work, such as required during file transfer from server to client.
 
-In contrast with SSH, GiBBERISh doesn't stream user's every key-stroke to the server. It first lets the user enter the complete command, reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate interrupt signals at server from particular key-sequences entered at the client, key-binding is done at the user's terminal such that it commits and pushes the appropriate callbacks to be executed by the parallel shell in server, whenever those keys are pressed by the user.
+In contrast with SSH, GiBBERISh doesn't stream user's every key-stroke to the server. Rather, it first lets the user enter the complete command, reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate interrupt signals at server from particular key-sequences entered at the client, key-binding is done at the user's terminal such that it commits and pushes the appropriate callbacks to be executed by the parallel shell in server, whenever those keys are pressed by the user.
 
 # Legal
 
