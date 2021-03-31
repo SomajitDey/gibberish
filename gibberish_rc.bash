@@ -264,8 +264,8 @@ gibberish(){
       ;;
     *)
       if [[ $1 =~ ^(take|push)$ ]]; then
-        eval local file_at_client="$2" # eval is used for enabling ~ expansion, backslash removal etc.
-        eval local path_at_server="$3"
+        local file_at_client="$2"
+        local path_at_server="$3"
         echo "This might take some time..."
         if GIBBERISH_UL "${file_at_client}"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
@@ -304,7 +304,7 @@ GIBBERISH_UL(){
   # Below we use transfer.sh for file hosting. If it is down, use any of the following alternatives:
   # 0x0.st , file.io , oshi.at , tcp.st
   # In the worst case scenario when everything is down, we can always push the payload through our Git repo
-  local payload="$1"
+  eval local payload="$1" # eval is used for enabling ~ expansion, backslash removal etc.
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   gpg --batch --quiet --armor --output - --passphrase-file "${patfile}" --symmetric "${payload}" | \
   curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
@@ -314,7 +314,7 @@ GIBBERISH_UL(){
 GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
   local url="${1}"
-  local copyto="${2}"
+  eval local copyto="${2}" # eval is used for enabling ~ expansion, backslash removal etc.
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   curl -s -S "${url}" | gpg --batch -q -o "${copyto}" --passphrase-file "${patfile}" -d
   )
@@ -326,8 +326,8 @@ GIBBERISH_DL(){
 }; export -f GIBBERISH_DL
 
 bring(){
-  eval local file_at_server="$1" # eval is used for enabling ~ expansion, backslash removal etc.
-  eval local path_at_client="$2"
+  local file_at_server="$1"
+  local path_at_client="$2"
   if GIBBERISH_UL "${file_at_server}"; then
     GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client}"
   else
