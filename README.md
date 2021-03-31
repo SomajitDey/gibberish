@@ -1,6 +1,6 @@
 # What is GiBBERISh
 
-**GiBBERISh** stands for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is a *free*, *easy* and *portable*, albeit somewhat slow, way to *securely* access your *Linux* computer from another *Linux* box over the internet, when none of the machines has a public IP address. You can also transfer files to and fro the remote host, with end-to-end encryption.
+**GiBBERISh** stands for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is a *free*, *easy* and *portable* solution to *securely* access your *Linux* computer from another *Linux* box over the internet, when none of the machines has a public IP address. You can also transfer files to and fro the remote host, with end-to-end encryption.
 
 GiBBERISh consists of only a short *Bash* *script*, to be run on both the hosts (viz. *client* and *server*), and an *online* *Git* *repository* owned and controlled by the user, such as a *free* repository at any of [GitHub](https://github.com/), [GitLab](https://gitlab.com/), [Bitbucket](https://bitbucket.org/), [SourceForge](https://sourceforge.net/) etc.
 
@@ -100,7 +100,7 @@ rc <local path to script>
 
 All the commands in the given script are passed to upstream in one Git-push. Hence, use of this keyword helps with latency issues.
 
-**take | push **: See next section
+**take | push** : See next section
 
 **bring** | **pull** : See next section
 
