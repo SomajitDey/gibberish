@@ -46,7 +46,8 @@ GIBBERISH_fetchd(){
       [[ -e "${brbtag}" ]] && return
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
-        git restore --quiet --source="${commit}" --worktree -- "./${iofile}"
+        # git restore --quiet --source="${commit}" --worktree -- "./${iofile}" # Use this for recent Git versions only
+        git checkout --quiet "${commit}" -- "./${iofile}" # Same as git-restore above
         if [[ -e "${patfile}" ]]; then
           gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
             || echo 'GIBBERISH: Decryption failed. Perhaps client and server are not using the same passphrase/access-token'
@@ -157,7 +158,8 @@ GIBBERISH_prelaunch(){
 
   # Sync/update repos:
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  git restore --quiet "./${iofile}" 2>/dev/null
+  # git restore --quiet "./${iofile}" 2>/dev/null # Use for recent Git versions only
+  git checkout --quiet "./${iofile}" 2>/dev/null # Same as git-restore above
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
