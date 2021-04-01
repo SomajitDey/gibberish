@@ -274,6 +274,9 @@ gibberish(){
           echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
           continue
         fi
+      elif [[ $1 =~ ^(bring|pull)$ ]]; then
+        eval local path_at_client="$3"
+        cmd="GIBBERISH_bring ${2} ${path_at_client}"
       elif [[ $1 == rc ]]; then
         eval local script="$2" # eval is used for enabling ~ expansion, backslash removal etc.
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
@@ -325,7 +328,7 @@ GIBBERISH_DL(){
   fi
 }; export -f GIBBERISH_DL
 
-bring(){
+GIBBERISH_bring(){
   local file_at_server="$1"
   local path_at_client="$2"
   if GIBBERISH_UL "${file_at_server}"; then
@@ -333,9 +336,4 @@ bring(){
   else
     echo -e \\n"FAILED."
   fi
-}; export -f bring
-
-pull(){
-  # Same as bring
-  bring $@
-}; export -f pull
+}; export -f GIBBERISH_bring
