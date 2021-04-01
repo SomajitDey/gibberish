@@ -80,11 +80,11 @@ After 8-12 seconds, you should get the server's command prompt.
 
 GiBBERISh recognizes a few keywords as listed below.
 
-**ping | hello | hey | hi** : To test if the server is still connected. Consider the following situation. You are running a foreground process on the server, which outputs infrequently. Because it is in foreground, you do not have the command prompt and hence cannot execute a short command such as [echo](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) to see if the server is still responding. Just enter any of these keywords, and the server will send you a 'hello' if it can hear you, without interrupting that foreground process in any way. However, you can also do a simple Ctrl-z to get back the prompt, at the expense of stopping the foreground process. **Note**: If you enter any of these keywords at the command prompt, you are not given a new prompt after the server says hello. If this makes you uncomfortable, just press ENTER and wait for the server to give you another command prompt.
+**ping** | **hello** | **hey** | **hi** | To test if the server is still connected. Consider the following situation. You are running a foreground process on the server, which outputs infrequently. Because it is in foreground, you do not have the command prompt and hence cannot execute a short command such as [echo](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) to see if the server is still responding. Just enter any of these keywords, and the server will send you a 'hello' if it can hear you, without interrupting that foreground process in any way. However, you can also do a simple Ctrl-z to get back the prompt, at the expense of stopping the foreground process. **Note**: If you enter any of these keywords at the command prompt, you are not given a new prompt after the server says hello. If this makes you uncomfortable, just press ENTER and wait for the server to give you another command prompt.
 
-**exit | quit | logout | hup| bye** : To end the session and disconnect or hangup. When you do this, the current interactive shell in the server is closed and a new, fresh shell is launched ready for the next session. You therefore, would lose any environment variable you had set or function definitions you had sourced during the last session. Beware that this should also close any process running on the server that the exiting shell sends SIGHUP to, unless the process has a handler installed for HUP. Start processes in background with [nohup](https://man7.org/linux/man-pages/man1/nohup.1.html) if you intend to keep them running even after you logout using these keywords. 
+**exit** | **quit** | **logout** | **hup** | **bye** | To end the session and disconnect or hangup. When you do this, the current interactive shell in the server is closed and a new, fresh shell is launched ready for the next session. You therefore, would lose any environment variable you had set or function definitions you had sourced during the last session. Beware that this should also close any process running on the server that the exiting shell sends SIGHUP to, unless the process has a handler installed for HUP. Start processes in background with [nohup](https://man7.org/linux/man-pages/man1/nohup.1.html) if you intend to keep them running even after you logout using these keywords. 
 
-**brb** : Be right back, viz. to quickly switch to your local environment for a short while, without ending or interrupting the remote session. Any foreground process running in the server, keeps running uninterrupted. With this keyword, you simply get back your local command prompt, whenever you need to run commands locally during a remote session. To return to the remote session, just enter 
+**brb** | Be right back, viz. to quickly switch to your local environment for a short while, without ending or interrupting the remote session. Any foreground process running in the server, keeps running uninterrupted. With this keyword, you simply get back your local command prompt, whenever you need to run commands locally during a remote session. To return to the remote session, just enter 
 
 ```bash
 gibberish
@@ -92,7 +92,7 @@ gibberish
 
 again. You will be shown all the server output since the time you **brb**d, so you miss nothing. **Note**: If you enter *brb* at the command prompt, you are not given a new prompt after you return to the session. If this makes you uncomfortable, just press ENTER and wait for the server to give you another command prompt.
 
-**rc** : Run commands. This is akin to the . or [source](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) built-in of Bash. Whereas **source** reads commands from a local file and executes them in the current shell, **rc** takes commands from a client-side file and executes them in the server-side shell that the user is currently interacting with. The syntax is: 
+**rc** | Run commands. This is akin to the . or [source](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) built-in of Bash. Whereas **source** reads commands from a local file and executes them in the current shell, **rc** takes commands from a client-side file and executes them in the server-side shell that the user is currently interacting with. The syntax is: 
 
 ```bash
 rc <local path to script>
@@ -100,9 +100,9 @@ rc <local path to script>
 
 All the commands in the given script are passed to upstream in one Git-push. Hence, use of this keyword helps with latency issues.
 
-**take | push** : See next section
+**take** | **push** | See next section
 
-**bring** | **pull** : See next section
+**bring** | **pull** | See next section
 
 ------
 
