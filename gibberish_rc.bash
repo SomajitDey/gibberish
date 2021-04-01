@@ -320,7 +320,7 @@ GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
   local url="${1}"
   eval local copyto="${2}" # eval is used for enabling ~ expansion, backslash removal etc.
-  local dlcache="${GIBBERISH_DIR}/dlcache.tmp"
+  local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
   )
