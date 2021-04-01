@@ -17,7 +17,6 @@ GIBBERISH_filesys(){
   export outgoing="${GIBBERISH_DIR}/outgoing.txt"
   export write_lock="${GIBBERISH_DIR}/write.lock"
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
-  export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
   export fetch_pid_file="${GIBBERISH_DIR}/fetch.pid" # Holds pid of GIBBERISH_fetch_loop
   export bashpidfile="${GIBBERISH_DIR}/bashpid" # Holds pid of user's current interactive bash in server
   export brbtag="${GIBBERISH_DIR}/brb.tmp"
@@ -84,7 +83,7 @@ GIBBERISH_fetchd(){
       git reset --mixed --quiet FETCH_HEAD # Or, replace FETCH_HEAD with "origin/${fetch_branch}"
 
       # Fetching is iterative - hence it can trigger checkout continuously. Thus, nonblock flock is ok
-      flock --nonblock --no-fork "${checkout_lock}" -c GIBBERISH_checkout &
+      flock --nonblock --no-fork "${incoming_dir}" -c GIBBERISH_checkout &
     done
     }; export -f GIBBERISH_fetch_loop
 
