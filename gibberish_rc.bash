@@ -18,7 +18,6 @@ GIBBERISH_filesys(){
   export write_lock="${GIBBERISH_DIR}/write.lock"
   export commit_lock="${GIBBERISH_DIR}/commit.lock"
   export checkout_lock="${GIBBERISH_DIR}/checkout.lock"
-  export last_read_tag="${GIBBERISH_DIR}/last_read.tmp"
   export fetch_pid_file="${GIBBERISH_DIR}/fetch.pid" # Holds pid of GIBBERISH_fetch_loop
   export bashpidfile="${GIBBERISH_DIR}/bashpid" # Holds pid of user's current interactive bash in server
   export brbtag="${GIBBERISH_DIR}/brb.tmp"
@@ -34,7 +33,7 @@ GIBBERISH_fetchd(){
   GIBBERISH_checkout(){
     # Brief: Read and relay user input. Decrypt as necessary. Execute hooks.
 
-    cd "${incoming_dir}"
+    cd "${incoming_dir}"; local last_read_tag="${GIBBERISH_DIR}/last_read.tmp"
 
     # Read new commits chronologically
     local commit
@@ -322,10 +321,12 @@ GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
   local url="${1}"
   eval local copyto="${2}" # eval is used for enabling ~ expansion, backslash removal etc.
+  local dlcache="${GIBBERISH_DIR}/dlcache.tmp"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  curl -s -S "${url}" | gpg --batch -q -o "${copyto}" --passphrase-file "${patfile}" -d
+  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
   )
   if (( $? == 0 )); then
+    mv --verbose --backup='existing' "${dlcache}" "${copyto}"
     echo -e \\n"File transfer: COMPLETE"
   else
     echo -e \\n"File transfer: FAILED"
