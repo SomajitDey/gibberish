@@ -325,7 +325,7 @@ GIBBERISH_DL(){
   curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
   )
   if (( $? == 0 )); then
-    mv --force --backup='existing' "${dlcache}" "${copyto}"
+    mv --force --backup='existing' -T "${dlcache}" "${copyto}"
     echo -e \\n"File transfer: COMPLETE"
   else
     echo -e \\n"File transfer: FAILED"

@@ -126,7 +126,9 @@ bring <remote path> <local path>
 pull <remote path> <local path>
 ```
 
-To transfer directories or a collection of files, archive them first with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
+File transfer is atomic. If destination file is existing, it will be overwritten after backup. Transfer would fail if destination path is a directory.
+
+To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 
 **Note**: File transfer is end-to-end encrypted with your Git credentials. Because of this security, files are transferred using free public file hosting servers so that your Git repository size remains unaffected, no matter how big the transferred files are.
 
