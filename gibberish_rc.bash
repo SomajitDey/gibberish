@@ -56,6 +56,7 @@ GIBBERISH_fetchd(){
         fi
       else
         # Execute code supplied as commit message. This commit won't contain any other code
+        # All hooks (such as client-side file download) must remember that here PWD is ${incoming_dir}
         ( eval "${commit_msg}" ) # Sub-shell isolates hook execution environment, so that the current one remains unaffected
       fi
       # Atomic tag update, such that there is always a last_read tag 
@@ -275,7 +276,10 @@ gibberish(){
           continue
         fi
       elif [[ $1 =~ ^(bring|pull)$ ]]; then
-        eval local path_at_client="$3"
+        # The following 2 commands give the absolute path for the destination file
+        # Otherwise, during hook-execution, relative paths would be relative to $incoming_dir
+        eval local path_at_client="$3" # eval is for tilde expansion, backslash interpretation etc.
+        [[ "${path_at_client}" != /* ]] && path_at_client="${PWD}/${path_at_client}"
         cmd="GIBBERISH_bring ${2} ${path_at_client}"
       elif [[ $1 == rc ]]; then
         eval local script="$2" # eval is used for enabling ~ expansion, backslash removal etc.
