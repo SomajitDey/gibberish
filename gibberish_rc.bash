@@ -265,10 +265,11 @@ gibberish(){
       if [[ $1 =~ ^(take|push)$ ]]; then
         local file_at_client="$2"
         local path_at_server="$3"
+        local filename="${file_at_client##*/}"
         echo "This might take some time..."
         if GIBBERISH_UL "${file_at_client}"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
-          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server}"
+          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename}"
         else
           echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
           continue
@@ -320,12 +321,14 @@ GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
   local url="${1}"
   eval local copyto="${2}" # eval is used for enabling ~ expansion, backslash removal etc.
+  local filename="${3}"
+  [[ -d "${copyto}" ]] && copyto="${copyto}/${filename}"
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
   )
   if (( $? == 0 )); then
-    mv --force --backup='existing' -T "${dlcache}" "${copyto}"
+    mv --force --backup='existing' -T "${dlcache}" "${copyto}" && \
     echo -e \\n"File transfer: COMPLETE"
   else
     echo -e \\n"File transfer: FAILED"
@@ -335,8 +338,9 @@ GIBBERISH_DL(){
 GIBBERISH_bring(){
   local file_at_server="$1"
   local path_at_client="$2"
+  local filename="${file_at_server##*/}"
   if GIBBERISH_UL "${file_at_server}"; then
-    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client}"
+    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client} ${filename}"
   else
     echo -e \\n"FAILED."
   fi

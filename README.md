@@ -126,11 +126,11 @@ bring <remote path> <local path>
 pull <remote path> <local path>
 ```
 
-File transfer is atomic. If destination file is existing, it will be overwritten after backup. Transfer would fail if destination path is a directory.
+File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If destination path is a directory, the file would be put inside it. Make sure none of the filenames or paths contains spaces. The paths can be absolute or relative.
 
 To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 
-**Note**: File transfer is end-to-end encrypted with your Git credentials. Because of this security, files are transferred using free public file hosting servers so that your Git repository size remains unaffected, no matter how big the transferred files are.
+**Note**: File transfer is end-to-end encrypted with your Git credentials. To keep your Git repository size small, the files are transferred using free, public file-hosting servers.
 
 # Library, not executable
 
