@@ -45,7 +45,7 @@ GIBBERISH_fetchd(){
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
         # git restore --quiet --source="${commit}" --worktree -- "./${iofile}" # Use this for recent Git versions only
-        git checkout --quiet "${commit}" -- "./${iofile}" # Same as git-restore above
+        git checkout --quiet "${commit}" -- "./${iofile}" # Not same as git-restore above, this changes the index too
         if [[ -e "${patfile}" ]]; then
           gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
             || echo 'GIBBERISH: Decryption failed. Perhaps client and server are not using the same passphrase/access-token'
@@ -76,11 +76,11 @@ GIBBERISH_fetchd(){
 
       git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
 
-      # git-reset instead of git-merge or git-pull. This is because git-reset doesn't touch worktree
-      # but updates the branch head and index only (--mixed option). Hence doesn't conflict with a 
-      # restored worktree where git-merge would complain while trying to overwrite.
+      # git-reset instead of git-merge or git-pull. This is because git-reset --soft doesn't touch worktree
+      # but updates the branch head only. Hence doesn't conflict with a
+      # checked-out worktree and index where git-merge would complain while trying to overwrite.
       # Note: we can use git-reset instead of merge only because our branch history is linear (--ff-only)
-      git reset --mixed --quiet FETCH_HEAD # Or, replace FETCH_HEAD with "origin/${fetch_branch}"
+      git reset --soft --quiet FETCH_HEAD # Or, replace FETCH_HEAD with "origin/${fetch_branch}"
 
       # Fetching is iterative - hence it can trigger checkout continuously. Thus, nonblock flock is ok
       flock --nonblock --no-fork "${incoming_dir}" -c GIBBERISH_checkout &
@@ -245,7 +245,7 @@ gibberish(){
   local cmd
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
-    set -- ${cmd} # This is necessary for take|push only
+    eval set -- ${cmd} # eval makes sure parameters containing spaces are parsed correctly
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
@@ -263,25 +263,28 @@ gibberish(){
       ;;
     *)
       if [[ $1 =~ ^(take|push)$ ]]; then
-        local file_at_client="$2"
-        local path_at_server="$3"
+        local file_at_client="${2}"
+        local path_at_server="${3// /\\ }"
+        [[ "${path_at_server}" =~ ^${HOME} ]] && path_at_server=${path_at_server//"${HOME}"/\~}
         local filename="${file_at_client##*/}"
         echo "This might take some time..."
         if GIBBERISH_UL "${file_at_client}"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
-          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename}"
+          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename// /\\ }"
         else
           echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
           continue
         fi
       elif [[ $1 =~ ^(bring|pull)$ ]]; then
+        local file_at_server="${2// /\\ }"
+        [[ "${file_at_server}" =~ ^${HOME} ]] && file_at_server=${file_at_server//"${HOME}"/\~}
         # The following 2 commands give the absolute path for the destination file
         # Otherwise, during hook-execution, relative paths would be relative to $incoming_dir
-        eval local path_at_client="$3" # eval is for tilde expansion, backslash interpretation etc.
+        local path_at_client="${3// /\\ }"
         [[ "${path_at_client}" != /* ]] && path_at_client="${PWD}/${path_at_client}"
-        cmd="GIBBERISH_bring ${2} ${path_at_client}"
+        cmd="GIBBERISH_bring ${file_at_server} ${path_at_client}"
       elif [[ $1 == rc ]]; then
-        eval local script="$2" # eval is used for enabling ~ expansion, backslash removal etc.
+        local script="$2"
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
              echo "You can enter next command now or press ENTER to get the server's prompt"; continue;}
         cmd="$(cat "${script}")"
@@ -310,7 +313,7 @@ GIBBERISH_UL(){
   # Below we use transfer.sh for file hosting. If it is down, use any of the following alternatives:
   # 0x0.st , file.io , oshi.at , tcp.st
   # In the worst case scenario when everything is down, we can always push the payload through our Git repo
-  eval local payload="$1" # eval is used for enabling ~ expansion, backslash removal etc.
+  local payload="$1"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   gpg --batch --quiet --armor --output - --passphrase-file "${patfile}" --symmetric "${payload}" | \
   curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
@@ -320,9 +323,9 @@ GIBBERISH_UL(){
 GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
   local url="${1}"
-  eval local copyto="${2}" # eval is used for enabling ~ expansion, backslash removal etc.
+  local copyto="${2}"
   local filename="${3}"
-  [[ -d "${copyto}" ]] && copyto="${copyto}/${filename}"
+  while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
@@ -337,10 +340,10 @@ GIBBERISH_DL(){
 
 GIBBERISH_bring(){
   local file_at_server="$1"
-  local path_at_client="$2"
+  local path_at_client="${2// /\\ }"
   local filename="${file_at_server##*/}"
   if GIBBERISH_UL "${file_at_server}"; then
-    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client} ${filename}"
+    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client} ${filename// /\\ }"
   else
     echo -e \\n"FAILED."
   fi
