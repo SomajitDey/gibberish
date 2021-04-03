@@ -280,7 +280,8 @@ gibberish(){
         local path_at_server="${3// /\\ }"
         local filename="${file_at_client##*/}"
         echo "This might take some time..."
-        if eval GIBBERISH_UL "${file_at_client}"; then
+         # Escaping space with \ is necessary before 2nd eval below.
+        if eval GIBBERISH_UL "${file_at_client// /\\ }"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
           cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename// /\\ }"
         else
