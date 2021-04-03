@@ -24,6 +24,8 @@ GIBBERISH_filesys(){
   export patfile="${GIBBERISH_DIR}/access_token" # Holds passphrase/access-token of cloud repo
   export snapshot="${GIBBERISH_DIR}/pre-gpg-encryption.tmp"
   export file_transfer_url="${GIBBERISH_DIR}/file_transfer_url.tmp"
+  export prelaunch_pwd="${PWD}"
+  export prelaunch_oldpwd="${OLDPWD}"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -163,12 +165,10 @@ GIBBERISH_prelaunch(){
   git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
     { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
-  cd ~-
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
     { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
-  cd "${OLDPWD}"
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
 
@@ -195,7 +195,7 @@ gibberish-server(){
   echo "This server needs to run in foreground."
   echo "To exit, simply close the terminal window."
   echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
-  cd "${HOME}" # So that the client is at the home directory on first connection to server 
+  export OLDPWD="${HOME}"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
   # To relay interrupt signals programmatically, we need to know the foreground processes group id attached to server tty
   # so that we can use pkill -SIG --pgroup. Following prompt command saves the pid of current interactive bash
@@ -247,10 +247,11 @@ gibberish(){
   local histfile="${GIBBERISH_DIR}/history.txt"
   echo "help" > "${histfile}" # This file initialization is necessary for the following history builtin to work
   history -c; history -r "${histfile}"
+  cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
     history -s ${cmd}
-    eval set -- ${cmd} # eval makes sure parameters containing spaces are parsed correctly
+    eval set -- ${cmd//\~/\\~} # eval makes sure parameters containing spaces are parsed correctly. Substitution turns off ~ expansion
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
@@ -276,7 +277,7 @@ gibberish(){
         [[ "${path_at_server}" =~ ^${HOME} ]] && path_at_server="${path_at_server//"${HOME}"/\~}"
         local filename="${file_at_client##*/}"
         echo "This might take some time..."
-        if GIBBERISH_UL "${file_at_client}"; then
+        if eval GIBBERISH_UL "${file_at_client}"; then
           echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
           cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename// /\\ }"
         else
@@ -285,11 +286,10 @@ gibberish(){
         fi
       elif [[ $1 =~ ^(bring|pull)$ ]]; then
         local file_at_server="${2// /\\ }"
-        [[ "${file_at_server}" =~ ^${HOME} ]] && file_at_server="${file_at_server//"${HOME}"/\~}"
 
         # The following 2 commands give the absolute path for the destination file
         # Otherwise, during hook-execution, relative paths would be relative to $incoming_dir
-        local path_at_client="${3}"
+        eval local path_at_client="${3// /\\ }" # For tilde expansion. Escaping space with \ is necessary before 2nd eval.
         [[ "${path_at_client}" != /* ]] && path_at_client="${PWD}/${path_at_client}"
 
         cmd="GIBBERISH_bring ${file_at_server} ${path_at_client// /\\ }"
