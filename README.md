@@ -126,7 +126,7 @@ bring <remote path> <local path>
 pull <remote path> <local path>
 ```
 
-File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If destination path is a directory, the file would be put inside it. Make sure none of the filenames or paths contains spaces. The paths can be absolute or relative.
+File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If the destination path is a directory, the file would be put inside it. The paths can be absolute or relative; relative local (remote) path would be expanded with client-side (server-side) working directory as base. If any environment variable is used in the path specifications, it will be replaced by its client-side value. The only exception is tilde (~/). If it is present in the local (remote) path specification, it expands to the client's (server's) HOME directory. Any other form of tilde-expansion (such as ~+/ or ~-/) always expands to their client-side value.
 
 To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 

@@ -7,7 +7,8 @@
 # Disclaimer: This software comes with ABSOLUTELY NO WARRANTY; use at your own risk.
 
 GIBBERISH_filesys(){
-  # Brief: Export important file definitions
+  # Brief: Export important file definitions with global scope. Files that are used locally
+  # within a single function only are not to be listed here.
   
   export GIBBERISH_DIR="${HOME}/.gibberish/${GIBBERISH}"
   export incoming_dir="${GIBBERISH_DIR}/incoming"
@@ -243,8 +244,12 @@ gibberish(){
 
   # UI (input-end)
   local cmd
+  local histfile="${GIBBERISH_DIR}/history.txt"
+  echo "help" > "${histfile}" # This file initialization is necessary for the following history builtin to work
+  history -c; history -r "${histfile}"
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
+    history -s ${cmd}
     eval set -- ${cmd} # eval makes sure parameters containing spaces are parsed correctly
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
@@ -264,8 +269,11 @@ gibberish(){
     *)
       if [[ $1 =~ ^(take|push)$ ]]; then
         local file_at_client="${2}"
+
+        # Replace 'file name' with file\ name so that we don't need to worry about quotes
         local path_at_server="${3// /\\ }"
-        [[ "${path_at_server}" =~ ^${HOME} ]] && path_at_server=${path_at_server//"${HOME}"/\~}
+        # "eval set -- $cmd" above expands ~ to client's HOME. Thus, for path@server we need to revert back to ~
+        [[ "${path_at_server}" =~ ^${HOME} ]] && path_at_server="${path_at_server//"${HOME}"/\~}"
         local filename="${file_at_client##*/}"
         echo "This might take some time..."
         if GIBBERISH_UL "${file_at_client}"; then
@@ -277,12 +285,14 @@ gibberish(){
         fi
       elif [[ $1 =~ ^(bring|pull)$ ]]; then
         local file_at_server="${2// /\\ }"
-        [[ "${file_at_server}" =~ ^${HOME} ]] && file_at_server=${file_at_server//"${HOME}"/\~}
+        [[ "${file_at_server}" =~ ^${HOME} ]] && file_at_server="${file_at_server//"${HOME}"/\~}"
+
         # The following 2 commands give the absolute path for the destination file
         # Otherwise, during hook-execution, relative paths would be relative to $incoming_dir
-        local path_at_client="${3// /\\ }"
+        local path_at_client="${3}"
         [[ "${path_at_client}" != /* ]] && path_at_client="${PWD}/${path_at_client}"
-        cmd="GIBBERISH_bring ${file_at_server} ${path_at_client}"
+
+        cmd="GIBBERISH_bring ${file_at_server} ${path_at_client// /\\ }"
       elif [[ $1 == rc ]]; then
         local script="$2"
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
@@ -325,7 +335,7 @@ GIBBERISH_DL(){
   local url="${1}"
   local copyto="${2}"
   local filename="${3}"
-  while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done
+  while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done # Enter subdirectories recursively if needed
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
   curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
