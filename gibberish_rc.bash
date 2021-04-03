@@ -195,7 +195,7 @@ gibberish-server(){
   echo "This server needs to run in foreground."
   echo "To exit, simply close the terminal window."
   echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
-  export OLDPWD="${HOME}"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
+  export OLDPWD="/tmp"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
   # To relay interrupt signals programmatically, we need to know the foreground processes group id attached to server tty
   # so that we can use pkill -SIG --pgroup. Following prompt command saves the pid of current interactive bash
@@ -250,8 +250,13 @@ gibberish(){
   cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
     read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
+
     history -s ${cmd}
-    eval set -- ${cmd//\~/\\~} # eval makes sure parameters containing spaces are parsed correctly. Substitution turns off ~ expansion
+
+    local backslash_esc_cmd="${cmd//\~/\\~}" # Substitution of ~ with \~ turns off ~ expansion by following eval
+    backslash_esc_cmd="${backslash_esc_cmd//\$/\\$}" # Turns off parameter/shell-variable expansion by following eval
+    eval set -- ${backslash_esc_cmd} # eval makes sure parameters containing spaces are parsed correctly
+
     case "${cmd}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
@@ -273,8 +278,6 @@ gibberish(){
 
         # Replace 'file name' with file\ name so that we don't need to worry about quotes
         local path_at_server="${3// /\\ }"
-        # "eval set -- $cmd" above expands ~ to client's HOME. Thus, for path@server we need to revert back to ~
-        [[ "${path_at_server}" =~ ^${HOME} ]] && path_at_server="${path_at_server//"${HOME}"/\~}"
         local filename="${file_at_client##*/}"
         echo "This might take some time..."
         if eval GIBBERISH_UL "${file_at_client}"; then
