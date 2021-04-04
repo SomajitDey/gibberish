@@ -298,7 +298,7 @@ gibberish(){
 
         cmd="GIBBERISH_bring ${file_at_server} ${path_at_client// /\\ }"
       elif [[ $1 == rc ]]; then
-        local script="$2"
+        eval local script="${2// /\\ }"
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
              echo "You can enter next command now or press ENTER to get the server's prompt"; continue;}
         cmd="$(cat "${script}")"
