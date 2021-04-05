@@ -275,32 +275,27 @@ gibberish(){
       (eval "${arg:=pwd}")
       ;;
     *)
-      if [[ $1 =~ ^(take|push)$ ]]; then
-        local file_at_client="${2}"
-
-        # Replace 'file name' with file\ name so that we don't need to worry about quotes
-        local path_at_server="${3// /\\ }"
+      if [[ "${keyword}" =~ ^(take|push)$ ]]; then
+        eval set -- ${arg} 2>/dev/null
+        local file_at_client="${1}"
         local filename="${file_at_client##*/}"
-        echo "This might take some time..."
-         # Escaping space with \ is necessary before 2nd eval below.
-        if eval GIBBERISH_UL "${file_at_client// /\\ }"; then
-          echo "Upload succeeded...pushing to remote. You'll next hear from GIBBERISH-server"
-          cmd="GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_server} ${filename// /\\ }"
+        echo "Uploading ${filename}..."
+        if GIBBERISH_UL "${file_at_client}"; then
+          echo "Upload successful. Now pushing to remote. You'll hear next from GIBBERISH-server."
+          cmd="url=$(awk NR==1 "$file_transfer_url"); filename='${filename}'; GIBBERISH_DL ${arg}"
         else
           echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
           continue
         fi
-      elif [[ $1 =~ ^(bring|pull)$ ]]; then
-        local file_at_server="${2// /\\ }"
-
-        # The following 2 commands give the absolute path for the destination file
+      elif [[ "${keyword}" =~ ^(bring|pull)$ ]]; then
+        # First generate the absolute path for the destination file, which is local
         # Otherwise, during hook-execution, relative paths would be relative to $incoming_dir
-        eval local path_at_client="${3// /\\ }" # For tilde expansion. Escaping space with \ is necessary before 2nd eval.
+        eval set -- ${arg} 2>/dev/null
+        local path_at_client="${2}"
         [[ "${path_at_client}" != /* ]] && path_at_client="${PWD}/${path_at_client}"
-
-        cmd="GIBBERISH_bring ${file_at_server} ${path_at_client// /\\ }"
-      elif [[ $1 == rc ]]; then
-        eval local script="${2// /\\ }"
+        cmd="path_at_client='${path_at_client}'; GIBBERISH_bring ${arg}"
+      elif [[ "${keyword}" == rc ]]; then
+        eval local script="${arg}" 2>/dev/null
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
              echo "You can enter next command now or press ENTER to get the server's prompt"; continue;}
         cmd="$(cat "${script}")"
@@ -338,9 +333,7 @@ GIBBERISH_UL(){
 
 GIBBERISH_DL(){
   # Brief: Download from given url and decrypt to the given local path
-  local url="${1}"
   local copyto="${2}"
-  local filename="${3}"
   while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done # Enter subdirectories recursively if needed
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
@@ -356,10 +349,10 @@ GIBBERISH_DL(){
 
 GIBBERISH_bring(){
   local file_at_server="$1"
-  local path_at_client="${2// /\\ }"
   local filename="${file_at_server##*/}"
   if GIBBERISH_UL "${file_at_server}"; then
-    GIBBERISH_hook_commit "GIBBERISH_DL $(awk NR==1 "$file_transfer_url") ${path_at_client} ${filename// /\\ }"
+    GIBBERISH_hook_commit "url=$(awk NR==1 "$file_transfer_url"); filename='${filename}';
+    GIBBERISH_DL '${file_at_server}' '${path_at_client}'"
   else
     echo -e \\n"FAILED."
   fi
