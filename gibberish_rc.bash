@@ -26,6 +26,8 @@ GIBBERISH_filesys(){
   export file_transfer_url="${GIBBERISH_DIR}/file_transfer_url.tmp"
   export prelaunch_pwd="${PWD}"
   export prelaunch_oldpwd="${OLDPWD}"
+  export promptfile_abs="${GIBBERISH_DIR}/prompt.tmp" # Abs path
+  export promptfile_rel="prompt.txt" # Relative path
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -47,8 +49,8 @@ GIBBERISH_fetchd(){
       [[ -e "${brbtag}" ]] && return
       if [[ -z "${commit_msg}" ]]; then
         # When commit message is empty, update worktree only
-        # git restore --quiet --source="${commit}" --worktree -- "./${iofile}" # Use this for recent Git versions only
-        git checkout --quiet "${commit}" -- "./${iofile}" # Not same as git-restore above, this changes the index too
+        # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
+        git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
         if [[ -e "${patfile}" ]]; then
           gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
             || echo 'GIBBERISH: Decryption failed. Perhaps client and server are not using the same passphrase/access-token'
@@ -106,7 +108,8 @@ GIBBERISH_commit(){
   else
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
   fi
-  git add  "./${iofile}"
+  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null # Failure would be for client
+  git add .
   git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
   ) 200>"${commit_lock}"
@@ -197,18 +200,18 @@ gibberish-server(){
   echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
   export OLDPWD="/tmp"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
-  # To relay interrupt signals programmatically, we need to know the foreground processes group id attached to server tty
-  # so that we can use pkill -SIG --pgroup. Following prompt command saves the pid of current interactive bash
-  export PROMPT_COMMAND='echo $$ > $bashpidfile' # Might replace $$ with $BASHPID
-
-  # PS0 is expanded after the command is read by bash but before execution begins. We exploit it to erase the command-line.
-  # Erasure is necessary because the client tty will already have the cmd-line as typed by the user.
-  export PS0="$(tput cuu1 ; tput ed)"
-
+  local bash_init='
+  echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
+  . "${HOME}/.bashrc"
+  PS1="GiBBERISh-server:\w$ "
+  PROMPT_COMMAND="echo -n ${PS1@P} > ${promptfile_abs}" # So, non-empty promptfile means there is no fg process
+  PS0="$(echo -n > ${promptfile_abs} ; tput cuu1 ; tput ed)" # tput is to avoid showing the commandline twice to user@client.
+  '
+  
   # If client sends exit or logout, new shell must launch for a fresh new user session. Hence loop follows.
   trap 'kill -KILL $BASHPID' HUP
   while pkill -0 --pidfile "${fetch_pid_file}"; do
-    bash -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
+    bash --rcfile <(echo "${bash_init}") -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
     # Also user won't get a PS1 prompt after execution of her/his command finishes or notification when bg jobs exit
   done < <(GIBBERISH_read | tee /dev/tty) |& tee /dev/tty | GIBBERISH_write
   exit ) 200>"${HOME}/.gibberish-server.lock"
@@ -227,9 +230,13 @@ gibberish(){
   # UI (output-end)
   { GIBBERISH_read &} 2>/dev/null # Redirection of stderr is so that pid of bg job is not shown in tty
 
-  { [[ -e "${brbtag}" ]] && echo 'Welcome back to GIBBERISH-server' ;} || \
-  { echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit ;}
-  rm -f  "${brbtag}"
+  if [[ -e "${brbtag}" ]] ; then
+    echo 'Welcome back to GIBBERISH-server'
+    cat "${incoming_dir}/${promptfile_rel}" # Show server prompt, if there is any fg process
+    rm -f  "${brbtag}"
+  else
+    echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
+  fi
 
   # Trap terminal based signals to relay them to server foreground process
   trap 'GIBBERISH_hook_commit "GIBBERISH_fg_kill HUP"' HUP
@@ -269,22 +276,22 @@ gibberish(){
       break
       ;;
     ping|hey|hello|hi)
-      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server'"
+      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server; cat \"\${incoming_dir}/\${promptfile_rel}\"'"
       ;;
     local)
-      (eval "${arg:=pwd}")
+      (eval "${arg:=pwd}"); cat "${incoming_dir}/${promptfile_rel}" # Show server prompt
       ;;
     *)
       if [[ "${keyword}" =~ ^(take|push)$ ]]; then
         eval set -- ${arg} 2>/dev/null
         local file_at_client="${1}"
         local filename="${file_at_client##*/}"
-        echo "Uploading ${filename}..."
+        echo "Uploading ..."
         if GIBBERISH_UL "${file_at_client}"; then
           echo "Upload successful. Now pushing to remote. You'll hear next from GIBBERISH-server."
           cmd="url=$(awk NR==1 "$file_transfer_url"); filename='${filename}'; GIBBERISH_DL ${arg}"
         else
-          echo -e \\n"FAILED. You can enter next command now or press ENTER to get the server's prompt"
+          echo -e \\n"Upload FAILED"; cat "${incoming_dir}/${promptfile_rel}"
           continue
         fi
       elif [[ "${keyword}" =~ ^(bring|pull)$ ]]; then

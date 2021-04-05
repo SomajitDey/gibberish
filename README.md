@@ -92,6 +92,16 @@ gibberish
 
 again. You will be shown all the server output since the time you **brb**d, so you miss nothing. **Note**: If you enter *brb* at the command prompt, you are not given a new prompt after you return to the session. If this makes you uncomfortable, just press ENTER and wait for the server to give you another command prompt.
 
+**local** | Run commands locally (i.e. at the client) in a sub-shell. The syntax is:
+
+```bash
+local <commands>
+# To run a script (may be non-executable and without a shebang)
+local . <path to script>
+# To see current working directory at client
+local # equivalent to: local pwd
+```
+
 **rc** | Run commands. This is akin to the . or [source](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) built-in of Bash. Whereas **source** reads commands from a local file and executes them in the current shell, **rc** takes commands from a client-side file and executes them in the server-side shell that the user is currently interacting with. The syntax is: 
 
 ```bash
@@ -126,7 +136,7 @@ bring <remote path> <local path>
 pull <remote path> <local path>
 ```
 
-File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If the destination path is a directory, the file would be put inside it. The paths can be absolute or relative. As should be intuitive, any relative path would be interpreted with PWD at the corresponding host as its base, i.e. relative local (remote) path would be relative to the client-side (server-side) working directory. Similarly, tilde and shell-variable expansion in the path specifications, are done with respect to the corresponding host. Any shell-variable used in the path specifications, however, should not contain space(s) in its value.
+File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If the destination path is a directory, the file would be put inside it. The paths can be absolute or relative. As should be intuitive, any relative path would be interpreted with PWD at the corresponding host as its base, i.e. relative local (remote) path would be relative to the client-side (server-side) working directory. Similarly, tilde and shell-variable expansion in the path specifications, are done with respect to the corresponding host.
 
 To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 
