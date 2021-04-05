@@ -247,18 +247,16 @@ gibberish(){
   local cmd
   local histfile="${GIBBERISH_DIR}/history.txt"
   echo "help" > "${histfile}" # This file initialization is necessary for the following history builtin to work
-  history -c; history -r "${histfile}"
+  history -c; history -r "${histfile}" # Clean previous history, then initialize history-list
   cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
-    read -re -p"$(tput sgr0)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
+    read -re -p" " cmd # Purpose of the space prompt is to stop backspace from erasing server's command prompt
 
-    history -s ${cmd}
+    history -s ${cmd} # Save last-read command to history-list
 
-    local backslash_esc_cmd="${cmd//\~/\\~}" # Substitution of ~ with \~ turns off ~ expansion by following eval
-    backslash_esc_cmd="${backslash_esc_cmd//\$/\\$}" # Turns off parameter/shell-variable expansion by following eval
-    eval set -- ${backslash_esc_cmd} # eval makes sure parameters containing spaces are parsed correctly
+    set -- ${cmd}; local keyword="$1"; shift; local arg="$@"
 
-    case "${cmd}" in
+    case "${keyword}" in
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
       stty "${saved_stty_config}" # Bring back original key-binding; we could also use (if needed): stty intr ^C
@@ -272,6 +270,9 @@ gibberish(){
       ;;
     ping|hey|hello|hi)
       GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server'"
+      ;;
+    local)
+      (eval "${arg:=pwd}")
       ;;
     *)
       if [[ $1 =~ ^(take|push)$ ]]; then
