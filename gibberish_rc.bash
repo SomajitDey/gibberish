@@ -240,7 +240,8 @@ gibberish(){
   stty intr undef ; bind -x '"\C-C": GIBBERISH_hook_commit "GIBBERISH_fg_kill INT"'
   # Similarly...
   stty susp undef ; bind -x '"\C-Z": GIBBERISH_hook_commit "GIBBERISH_fg_kill TSTP"'
-  stty quit undef ; bind -x '"\C-E": GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ could not be bound
+  stty quit undef ; bind -x '"\C-E": GIBBERISH_hook_commit "GIBBERISH_fg_kill QUIT"' # \C-\\ didn't work as \ escaped trailing quote(")
+  bind -x '"\C- ": GIBBERISH_hook_commit "GIBBERISH_fg_kill STOP"' # Force pause fg process
 
   # UI (input-end)
   local cmd

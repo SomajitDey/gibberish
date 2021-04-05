@@ -41,7 +41,7 @@ Because of the dependence on an online Git repository, the time between entering
 5. Secure (GPG-encrypted) file transfer from client to server and vice-versa.
 6. Easy and fast switching between local and remote environments without interrupting the remote session in any way. See *brb* in the *Keywords* section below.
 7. Relays user's keyboard-generated signals, such as Ctrl-c; Ctrl-z to server.
-8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z etc., if necessary.
+8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z, Ctrl-*spacebar* etc., if necessary.
 9. Forever free. Given the popularity of Git in DevOps, freemium services such as GitHub are here to stay and they probably will continue hosting small public repositories for free for years to come. GiBBERISh is careful about keeping the repository size as small as possible. So, the size limit of the free-tier plans should never be an issue.
 10. Lightweight: CPU usage is minimal. Polling and busy-waits are avoided wherever possible in favor of event-driven triggers.
 11. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. You also hold the perpetual right to adapt the script to your needs.
@@ -131,6 +131,10 @@ File transfer is atomic, which guarantees you never end up with a corrupt file, 
 To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 
 **Note**: File transfer is end-to-end encrypted with your Git credentials. To keep your Git repository size small, the files are transferred using free, public file-hosting servers.
+
+# Keyboard-generated job-control signals
+
+All familiar Ctrl key generated signals are supported except Ctrl-\, which has been replaced by Ctrl-e ('e' for exit). Because the user doesn't have the liberty to open a second terminal to control a runaway foreground process that ignores SIGTSTP (as generated with Ctrl-z), GiBBERISh provides Ctrl-*spacebar* hot-key to force pause a foreground process with SIGSTOP - which cannot be ignored or handled.
 
 # Library, not executable
 
