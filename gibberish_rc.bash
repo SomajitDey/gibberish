@@ -207,7 +207,7 @@ gibberish-server(){
   echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
   . "${HOME}/.bashrc"
   PS1="GiBBERISh-server:\w$ "
-  PROMPT_COMMAND="echo -n \${PS1@P} > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
+  PROMPT_COMMAND="echo -n \"\${PS1@P}\" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
   PS0="$(tput cuu1 ; tput ed)" # To avoid showing the commandline twice to user@client
   '
   
@@ -294,7 +294,7 @@ gibberish(){
           echo "Upload successful. Now pushing to remote. You'll hear next from GIBBERISH-server."
           cmd="url=$(awk NR==1 "$file_transfer_url"); filename='${filename}'; GIBBERISH_DL ${arg}"
         else
-          echo -e \\n"Upload FAILED"; GIBBERISH_commit
+          echo -e \\n"Upload FAILED"; GIBBERISH_prompt
           continue
         fi
       elif [[ "${keyword}" =~ ^(bring|pull)$ ]]; then
