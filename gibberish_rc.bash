@@ -108,7 +108,10 @@ GIBBERISH_commit(){
   else
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
   fi
-  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null # Failure would be for client
+
+  # Commit the current prompt, if any, through $promptfile_rel inside repo. Client-side execution of this line is inconsequential
+  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null || cat /dev/null > "./${promptfile_rel}"
+
   git add .
   git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
@@ -204,8 +207,8 @@ gibberish-server(){
   echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
   . "${HOME}/.bashrc"
   PS1="GiBBERISh-server:\w$ "
-  PROMPT_COMMAND="echo -n ${PS1@P} > ${promptfile_abs}" # So, non-empty promptfile means there is no fg process
-  PS0="$(echo -n > ${promptfile_abs} ; tput cuu1 ; tput ed)" # tput is to avoid showing the commandline twice to user@client.
+  PROMPT_COMMAND="echo -n \${PS1@P} > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
+  PS0="$(tput cuu1 ; tput ed)" # To avoid showing the commandline twice to user@client
   '
   
   # If client sends exit or logout, new shell must launch for a fresh new user session. Hence loop follows.
@@ -232,7 +235,7 @@ gibberish(){
 
   if [[ -e "${brbtag}" ]] ; then
     echo 'Welcome back to GIBBERISH-server'
-    cat "${incoming_dir}/${promptfile_rel}" # Show server prompt, if there is any fg process
+    GIBBERISH_prompt
     rm -f  "${brbtag}"
   else
     echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
@@ -276,10 +279,10 @@ gibberish(){
       break
       ;;
     ping|hey|hello|hi)
-      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server; cat \"\${incoming_dir}/\${promptfile_rel}\"'"
+      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server; GIBBERISH_prompt'"
       ;;
     local)
-      (eval "${arg:=pwd}"); cat "${incoming_dir}/${promptfile_rel}" # Show server prompt
+      (eval "${arg:=pwd}"); GIBBERISH_prompt
       ;;
     *)
       if [[ "${keyword}" =~ ^(take|push)$ ]]; then
@@ -291,7 +294,7 @@ gibberish(){
           echo "Upload successful. Now pushing to remote. You'll hear next from GIBBERISH-server."
           cmd="url=$(awk NR==1 "$file_transfer_url"); filename='${filename}'; GIBBERISH_DL ${arg}"
         else
-          echo -e \\n"Upload FAILED"; cat "${incoming_dir}/${promptfile_rel}"
+          echo -e \\n"Upload FAILED"; GIBBERISH_commit
           continue
         fi
       elif [[ "${keyword}" =~ ^(bring|pull)$ ]]; then
@@ -364,3 +367,10 @@ GIBBERISH_bring(){
     echo -e \\n"FAILED."
   fi
 }; export -f GIBBERISH_bring
+
+GIBBERISH_prompt(){
+  # Brief: Show current server prompt if there is no active fg process
+  # Meant to be used by client only
+  local promptfile="${incoming_dir}/${promptfile_rel}"
+  cat "${promptfile}" # Show server prompt
+}; export -f GIBBERISH_prompt
