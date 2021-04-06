@@ -110,7 +110,7 @@ GIBBERISH_commit(){
   fi
 
   # Commit the current prompt, if any, through $promptfile_rel inside repo. Client-side execution of this line is inconsequential
-  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null || cat /dev/null > "./${promptfile_rel}"
+  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null # || cat /dev/null > "./${promptfile_rel}"
 
   git add .
   git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
@@ -208,7 +208,9 @@ gibberish-server(){
   . "${HOME}/.bashrc"
   PS1="GiBBERISh-server:\w$ "
   PROMPT_COMMAND="echo -n \"\${PS1@P}\" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
-  PS0="$(tput cuu1 ; tput ed)" # To avoid showing the commandline twice to user@client
+  PS0="\$(echo -n > ${promptfile_abs}; tput cuu1 2>/dev/null ; tput ed 2>/dev/null)" # After cmd is read and b4 execution begins
+  # Empties the promptfile because an fg process is just about to start
+  # tputs are to avoid showing the commandline twice to user@client
   '
   
   # If client sends exit or logout, new shell must launch for a fresh new user session. Hence loop follows.
@@ -260,7 +262,7 @@ gibberish(){
   history -c; history -r "${histfile}" # Clean previous history, then initialize history-list
   cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
   while pkill -0 --pidfile "${fetch_pid_file}" ; do
-    read -re -p" " cmd # Purpose of the space prompt is to stop backspace from erasing server's command prompt
+    read -re -p"$(tput sgr0 2>/dev/null)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
 
     history -s ${cmd} # Save last-read command to history-list
 
