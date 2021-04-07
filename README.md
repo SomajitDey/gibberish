@@ -172,13 +172,27 @@ Such commit-message commands, meant for the parallel shell, are mostly kill(@ser
 
 In contrast with SSH, GiBBERISh does not stream every key-stroke made by the user to the server in real-time. Rather, it first lets the user enter the complete command, then reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate signals at server from particular key-sequences entered at the client, key-binding is done at the user's terminal such that it commits and pushes the appropriate hook to be executed by the parallel shell at server, whenever those keys are pressed by the user.
 
+Addition for user-comfort: Lately I have added another file to the repository that stores the current prompt as visible at the server-side terminal. When a foreground process is running in that terminal, this prompt-file becomes empty. Client fetches and checks out this file to remain informed about the current state of the dynamic server-side prompt, and displays the same at the client-side terminal as required. This feature is strictly designed for adding to the user experience and is in no way a necessary part of the GiBBERISh engine, as described in the previous paragraphs.
+
+# Bug-reports, Feature-requests, Comments
+
+Create issue(s) and comment at https://github.com/SomajitDey/gibberish
+
+You can also contact me directly at dey.somajit@gmail.com
+
 # Legal
 
-GiBBERISh-- Git and Bash Based Encrypted Remote Interactive Shell
+[GiBBERISh-- Git and Bash Based Encrypted Remote Interactive Shell](https://github.com/SomajitDey/gibberish)
 
-Copyright (C) 2021 Somajit Dey
+Copyright (C) 2021 [Somajit Dey](https://www.researchgate.net/profile/Somajit-Dey), [ORCID ID: 0000-0002-6102-9777](https://orcid.org/0000-0002-6102-9777)
 
 You are free to modify and distribute the code under GPL-3.0-or-later <https://www.gnu.org/licenses/>
 
 *GiBBERISh comes with ABSOLUTELY NO WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Use it at your own risk. The developer or copyright holder won't be liable for any damage done by or done using this software.*
+
+# Future directions
+
+https://github.com/SomajitDey/gibberish/projects/1
+
+
 

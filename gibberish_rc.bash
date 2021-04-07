@@ -269,6 +269,10 @@ gibberish(){
     set -- ${cmd}; local keyword="$1"; shift; local arg="$@"
 
     case "${keyword}" in
+    help|tutorial)
+      echo 'Please look up https://github.com/SomajitDey/gibberish/tree/dev#keywords-or-built-in-commands'
+      GIBBERISH_prompt
+      ;;
     exit|logout|quit|bye|hup|brb)
       pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
       stty "${saved_stty_config}" # Bring back original key-binding; we could also use (if needed): stty intr ^C
