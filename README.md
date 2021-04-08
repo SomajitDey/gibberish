@@ -1,3 +1,5 @@
+![DOI](https://zenodo.org/badge/349650704.svg) 
+
 # What is GiBBERISh
 
 **GiBBERISh** stands for ***Git and Bash Based Encrypted Remote Interactive Shell***. It is a *free*, *easy* and *portable* solution to *securely* access your *Linux* computer from another *Linux* box over the internet, when none of the machines has a public IP address. You can also transfer files to and fro the remote host, with end-to-end encryption.
@@ -51,7 +53,7 @@ Because of the dependence on an online Git repository, the time between entering
 
 # How to install / run
 
-First, create a dedicated repository at any free Git hosting service (e.g. https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/). The repository can be completely empty, i.e. without any commits. **Tip**: Also generate, if possible, a personal access-token (PAT) for your account.
+First, [create a dedicated repository](https://docs.github.com/en/github/getting-started-with-github/create-a-repo) at any free Git hosting service such as https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/. The repository can be completely empty, i.e. without any commits. **Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for your account.
 
 At the Linux machine that you want to use as server, run the *installer* script: 
 
