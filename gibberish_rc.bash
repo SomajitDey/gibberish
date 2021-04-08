@@ -28,6 +28,9 @@ GIBBERISH_filesys(){
   export prelaunch_oldpwd="${OLDPWD}"
   export promptfile_abs="${GIBBERISH_DIR}/prompt.tmp" # Abs path
   export promptfile_rel="prompt.txt" # Relative path
+  export push_error_log="${GIBBERISH_DIR}/push_error.log"
+  export pull_error_log="${GIBBERISH_DIR}/pull_error.log"
+  export fetch_error_log="${GIBBERISH_DIR}/fetch_error.log"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -77,9 +80,14 @@ GIBBERISH_fetchd(){
 
     local loop=true; trap 'loop=false' INT TERM QUIT HUP
     while ${loop};do
-      sleep 1 # This is just to model network latency. To be removed in release version
-
-      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
+#      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
+      if ! (date;timeout 5 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
+        [[ -v warning ]] || local warning="$(echo 'Check network connection...To exit, use command: brb' >/dev/tty)"
+        continue
+      else
+        [[ -v warning ]] && unset warning && echo 'Connection is back :-)'
+        echo -n >"${fetch_error_log}"
+      fi
 
       # git-reset instead of git-merge or git-pull. This is because git-reset --soft doesn't touch worktree
       # but updates the branch head only. Hence doesn't conflict with a
@@ -168,13 +176,16 @@ GIBBERISH_prelaunch(){
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   # git restore --quiet "./${iofile}" 2>/dev/null # Use for recent Git versions only
   git checkout --quiet "./${iofile}" 2>/dev/null # Same as git-restore above
-  git pull --ff-only --no-verify --quiet origin "${fetch_branch}" || \
-    { echo "Pull failed: ${incoming_dir}" >&2 ; exit 1;}
+  git pull --ff-only --no-verify --quiet origin "${fetch_branch}" 2>"${fetch_error_log}" || \
+    { echo "Pull failed: ${fetch_branch}. Check network connection." >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  git pull --ff-only --no-verify --quiet origin "${push_branch}" || \
-    { echo "Pull failed: ${outgoing_dir}" >&2 ; exit 1;}
+  [[ -e "${brbtag}" ]] || git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
+  git pull --rebase --no-verify --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
+    { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
+  git push --quiet --no-verify origin "${push_branch}" 2>"${push_error_log}" || \
+    { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
 
@@ -285,7 +296,11 @@ gibberish(){
       break
       ;;
     ping|hey|hello|hi)
-      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo Hello from GIBBERISH-server; GIBBERISH_prompt'"
+      { (sleep 10; echo 'Seems GIBBERISH-server is down'; GIBBERISH_prompt)& local killme="$!";} 2>/dev/null
+      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'kill -KILL ${killme}; echo Hello from GIBBERISH-server; GIBBERISH_prompt'"
+      ;;
+    latency|rtt)
+      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo \$((EPOCHSECONDS-${EPOCHSECONDS}))s; GIBBERISH_prompt'"
       ;;
     local)
       (eval "${arg:=pwd}"); GIBBERISH_prompt

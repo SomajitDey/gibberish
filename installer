@@ -11,6 +11,7 @@
 export rcfile='gibberish_rc.bash'
 
 command -v git &>/dev/null || { echo 'Install git' ; exit 1;}
+man git-worktree &>/dev/null || { echo 'Too old version of git' ; exit 1;}
 command -v flock &>/dev/null || { echo 'Install flock' ; exit 1;}
 command -v gpg &>/dev/null || { echo 'Install gpg' ; exit 1;}
 
@@ -104,13 +105,13 @@ git config --local user.email "gibberish@${config}"
 git checkout --quiet "${config}" &>/dev/null || \
 (git checkout --quiet -b "${config}"
 git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}") || \
-{ echo -e \\n'Oops, something failed. Exiting'; exit 1;}
+{ echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
 
 # Create outgoing directory; checked out with appropriate branch
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
 (git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
 git push --quiet origin "${talkto}") || \
-{ echo -e \\n'Oops, something failed. Exiting'; exit 1;}
+{ echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
 
 ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
   { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
