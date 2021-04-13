@@ -40,33 +40,39 @@ uri="${url#*:\/\/}"
 protocol="${url%:\/\/*}"
 
 if [[ "${protocol}" == "file" ]] || [[ "${uri}" == "${protocol}" ]]; then
+  protocol="file"
+  localhost="true"
   fetch_url="${uri}"
   push_url="${uri}"
-  localhost="true"
+  unset pass
 else
-  fetch_url="git://${uri}"
+  protocol="https" # Because https will be allowed by every firewall, unlike ssh://
+  echo -e \\n'Using https:// for git-push'
   localhost="false"
-fi
 
-if [[ "${protocol}" =~ ^(ssh|git)$ ]]; then
-  echo -e \\n'Using https:// for push'
-  protocol="https"
-fi
-
-if [[ "${protocol}" == "https" ]]; then
   echo -e "\nEnter your ${uri%%\/*} credentials below. GIBBERISh will use this during git-push."
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
   tput cuu1; tput ed; echo 'Got your passwd.'
   push_url="https://${uid}:${pass}@${uri}"
+
+  echo -e \\n'Is this computer behind a firewall that blocks all non-web traffic?'
+  while read -p '1. Yes 2. No 3. Dunno : ' -n1 choice ; do
+    case "${choice}" in
+      2)fetch_url="git://${uri}"; break;; # Because git:// is faster
+      1|3)fetch_url="https://${uri}"; break;;
+      *)echo -e \\n'Tip: Type either 1, 2 or 3';;
+    esac
+  done
+  echo
 fi
 
 echo -e \\n'You shall be using this PC as'
-while read -p '1. Server 2. Client: ' -n1 choice ; do
+while read -p '1. Server 2. Client : ' -n1 choice ; do
   case "${choice}" in
     1)config="server"; talkto="client"; break;;
     2)config="client"; talkto="server"; break;;
-    *)echo 'Tip: Type either 1 or 2';;
+    *)echo -e \\n'Tip: Type either 1 or 2';;
   esac
 done
 echo
@@ -83,16 +89,7 @@ GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
 mkdir -p "${GIBBERISH_DIR}"
 
-if [[ -n "${pass}" ]]; then
-  while read -p 'Do you want encrytion?(y/n) :' -n1 choice; do
-    case "${choice}" in
-      y|Y) echo "${pass}" > "${patfile}"; break;;
-      n|N) break;;
-      *) echo 'Tip: Type y for yes and n for no';;
-    esac
-  done
-  echo
-fi
+[[ -n "${pass}" ]] && echo "${pass}" > "${patfile}"
 
 git clone --quiet "${fetch_url}" "${incoming_dir}" || { echo -e \\n'Git-clone failed, exiting'; exit 1;}
 
@@ -117,11 +114,12 @@ ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
   { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
 
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
-run_command=". ${HOME}/.${rcfile}"
+run_command="source ${HOME}/.${rcfile}"
 grep -q -x "${run_command}" "${HOME}/.bashrc" || (echo "${run_command}" >> "${HOME}/.bashrc")
 case "${config}" in 
   server) echo -e \\n'Command to launch: gibberish-server';;
   client) echo -e \\n'Command to launch: gibberish';;
 esac
 
-echo -e \\n"To use the above command right now, either open a new shell or do: $run_command"
+echo -e \\n"To use the above command right now, either open a new shell or terminal, or use the following command:
+$run_command"
