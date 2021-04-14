@@ -13,9 +13,11 @@ The standard way to remote access a Linux computer is Secure Shell (SSH). But, i
 1. SSH port forwarding at a server with public IP
 2. Virtual Private Network or VPN
 
-If you can afford any of the above, then GiBBERISh is not for you. However, if you are like me, who doesn't want to pay for a port-forwarding or VPN service, you are probably out of luck with SSH. 
+If you can afford any of the above, then GiBBERISh is not for you. However, if you are like me, who doesn't want to pay for a port-forwarding or VPN service, you are probably out of luck with SSH. Also, some corporate firewalls block non-web traffic entirely, hence SSH is not even an option there.
 
-However, you can still manage fine with a free remote access app, such as TeamViewer. If you are happily using such Virtual Network Computing (VNC), then too you won't have any use for GiBBERISh. I, however, faced a lot of problems connecting two different versions of Ubuntu using TeamViewer. That probably is my bad, but it seems likely that such intricate apps come with their own portability issues. Besides, they usually depend on a lot of other packages, installing which might be taxing for the inexperienced user. Anyways, I needed a light-weight, portable, easy-to-install and completely free yet reliable platform to access my remote machine securely over the internet. I didn't mind the latency, as long as my main purpose of submitting jobs to the remote host was served. Hence, my DIY solution - GiBBERISh.
+However, you can still manage fine with a freemium remote access app, such as TeamViewer or Anydesk. If you are happily using such Virtual Network Computing (VNC) tools, then too you won't have any use for GiBBERISh. However, VNC apps have their [cons](https://www.comparitech.com/vpn/what-is-a-vnc-and-how-does-it-differ-from-a-vpn/#:~:text=phones%2C%20these%20days.-,Cons%20of%20VNC,the%20color%20depth%20to%20use.). They consume a lot of bandwidth. If you want to access just the shell of your remote host, why would you need to import the entire screen! The remote computer also need to be online all the time. Another common problem is [version incompatibility](https://www.tek-tools.com/itsm/teamviewer-alternatives). For TeamViewer, for example, every machine needs to have the same version of the app installed on it, or else it won’t work. In addition, being freemium, what they offer for free is limited and you never know how long they would keep offering those free services. To top it all of, you can do nothing but trust these service providers when they say that using their services is completely safe for [your systems](http://www.remoteaccess.org/what-is-a-vnc/#:~:text=Some%20Cons%20in%20Using%20a%20Virtual%20Network%20Computing%20Program&text=Security%20issues%20can%20quickly%20become,possibly%20compromise%20your%20entire%20network.) and [your data](https://www.bbc.com/news/technology-36459015).
+
+Anyways, I needed a light-weight, portable, easy-to-install and completely free yet reliable platform to access my remote machine securely over the internet. I didn't mind the latency, as long as my main purpose of submitting jobs to the remote host was served. Hence, my DIY solution - GiBBERISh.
 
 # How it works
 
@@ -33,7 +35,7 @@ Whenever the user enters a command at client, the GiBBERISh script encrypts it w
 
 # Drawback:
 
-Because of the dependence on an online Git repository, the time between entering a command and getting its output back is not insignificant. From multiple measurements, I found the latency varies between 6 to 9 seconds.
+Because of the dependence on an online Git repository, the time between entering a command and getting its output back is not insignificant. From multiple measurements with upstream at GitHub, I found the latency varies between 6 to 9 seconds.
 # Features:
 
 1. Doesn't require a public IP address. Both machines can be behind multiple NATs.
@@ -46,10 +48,11 @@ Because of the dependence on an online Git repository, the time between entering
 8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z, Ctrl-*spacebar* etc., if necessary.
 9. Forever free. Given the popularity of Git in DevOps, freemium services such as GitHub are here to stay and they probably will continue hosting small public repositories for free for years to come. GiBBERISh is careful about keeping the repository size as small as possible. So, the size limit of the free-tier plans should never be an issue.
 10. Lightweight: CPU usage is minimal. Polling and busy-waits are avoided wherever possible in favor of event-driven triggers.
-11. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. You also hold the perpetual right to adapt the script to your needs.
-12. Everything is under your control. You are free to modify the single Bash script that GiBBERISh runs from. You own and manage the upstream repository. If you are connecting to your work computer from your home machine or vice versa, you control both the machines. You also choose who can access your machine, should you ever be granting someone else remote access for purposes of diagnostics, instructions etc. [**Tip**: Revoke their (push) access-token from your upstream account once they are done].
-13. Because Git and Bash are the only main ingredients, GiBBERISh (in an implementation that doesn't use flock) maybe run easily on [Git-Bash](https://gitforwindows.org/) from the Git for Windows package. However, that might be unnecessary, given that Windows 10 now ships with a subsystem for Linux ([WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
-14. Stores command history for the session. Use the Up, Down arrow keys or Ctrl-p and Ctrl-n to access history as usual.
+11. Reliable: If any of your machines goes offline, it automatically gets connected once its internet connection is restored. No data is lost. Just make sure your remote host stays up even when there is power-outage.
+12. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. You also hold the perpetual right to adapt the script to your needs.
+13. Everything is under your control. You are free to modify the single Bash script that GiBBERISh runs from. You own and manage the upstream repository. If you are connecting to your work computer from your home machine or vice versa, you control both the machines. You also choose who can access your machine, should you ever be granting someone else remote access for purposes of diagnostics, instructions etc. [**Tip**: Revoke their (push) access-token from your upstream account once they are done].
+14. Because Git and Bash are the only main ingredients, GiBBERISh (in an implementation that doesn't use `flock`) maybe run easily on [Git-Bash](https://gitforwindows.org/) from the Git for Windows package. However, that might be unnecessary, given that Windows 10 now ships with a subsystem for Linux ([WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
+15. Stores command history for the session. Use the Up, Down arrow keys or Ctrl-p and Ctrl-n to access history as usual.
 
 # How to install / run
 
@@ -83,29 +86,35 @@ After 6-9 seconds, you should get the server's command prompt.
 
 GiBBERISh recognizes a few keywords as listed below.
 
-**ping** | **hello** | **hey** | **hi** | To test if the server is still connected. Consider the following situation. You are running a foreground process on the server, which outputs infrequently. Because it is in foreground, you do not have the command prompt and hence cannot execute a short command such as [echo](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) to see if the server is still responding. Just enter any of these keywords, and the server will send you a 'hello' if it can hear you, without interrupting that foreground process in any way. However, you can also do a simple Ctrl-spacebar or Ctrl-z to get back the prompt, at the expense of stopping the foreground process.
+**ping** \| **hello** \| **hey** \| **hi**
 
-**exit** | **quit** | **logout** | **hup** | **bye** | To end the session and disconnect or hangup. When you do this, the current interactive shell in the server is closed and a new, fresh shell is launched ready for the next session. You therefore, would lose any environment variable you had set or function definitions you had sourced during the last session. Beware that this should also close any process running on the server that the exiting shell sends SIGHUP to, unless the process has a handler installed for HUP. Start processes in background with [nohup](https://man7.org/linux/man-pages/man1/nohup.1.html) if you intend to keep them running even after you logout using these keywords. 
+To test if the server is still connected. Consider the following situation. You are running a foreground process on the server, which outputs infrequently. Because it is in foreground, you do not have the command prompt and hence cannot execute a short command such as [`echo`](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) to see if the server is still responding. Just enter any of these keywords, and the server will send you a 'hello' if it can hear you, without interrupting that foreground process in any way. However, you can also do a simple `Ctrl-<spacebar>` or `Ctrl-z` to get back the prompt, at the expense of stopping the foreground process. **Note**: You can use any of these commands anytime, even if a foreground process is running at the server and you do not have a prompt.
 
-**brb** | Be right back, viz. to quickly switch to your local environment for a short while, without ending or interrupting the remote session. Any foreground process running in the server, keeps running uninterrupted. With this keyword, you simply get back your local command prompt, whenever you need to run commands locally during a remote session. To return to the remote session, just enter 
+**exit** \| **quit** \| **logout** \| **hup** \| **bye**
 
-```bash
-gibberish
-```
+To end the session, and disconnect or hangup. When you do this, the current interactive shell in the server is closed and a new, fresh shell is launched ready for the next session. You therefore, would lose any environment variable you had set or function definitions you had sourced during the last session. Beware that this should also close any process running on the server that the exiting shell sends SIGHUP to, unless the process has a handler installed for HUP. Start processes in background with [`nohup`](https://man7.org/linux/man-pages/man1/nohup.1.html) if you intend to keep them running even after you logout using these keywords. 
 
-again. You will be shown all the server output since the time you **brb**d, so you miss nothing.
+**brb**
 
-**local** | Run commands locally (i.e. at the client) in a sub-shell. The syntax is:
+Be right back, viz. to quickly switch to your local environment for a short while, without ending or interrupting the remote session. Any foreground process running in the server, keeps running uninterrupted. With this keyword, you simply get back your local command prompt, whenever you need to run commands locally during a remote session. To return to the remote session, just enter `gibberish` again. You will be shown all the server output since the time you did `brb`, so you miss nothing.
+
+**local**
+
+Run commands locally, i.e. at the client, inside a sub-shell. The syntax is:
 
 ```bash
 local <commands>
-# To run a script (may be non-executable and without a shebang)
+
+# To run codes from a file
 local . <path to script>
+
 # To see current working directory at client
 local # equivalent to: local pwd
 ```
 
-**rc** | Run commands. This is akin to the . or [source](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) built-in of Bash. Whereas **source** reads commands from a local file and executes them in the current shell, **rc** takes commands from a client-side file and executes them in the server-side shell that the user is currently interacting with. The syntax is: 
+**rc**
+
+Run commands. This is akin to the `.` or [`source`](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) built-in of Bash. Whereas `source` reads commands from a local file and executes them in the current shell, `rc` takes commands from a client-side file and executes them in the server-side shell that the user is currently interacting with. The syntax is: 
 
 ```bash
 rc <local path to script>
@@ -113,17 +122,25 @@ rc <local path to script>
 
 All the commands in the given script are passed to upstream in one Git-push. Hence, use of this keyword helps with latency issues.
 
-**take** | **push** | See next section
+**take** \| **push**
 
-**bring** | **pull** | See next section
+See next section
 
-**help** | **tutorial** | Gives the link to this section
+**bring** \| **pull**
 
-**latency** | **rtt** | Gives the latency or round-trip-time for the current connection in seconds.
+See next section
+
+**help** \| **tutorial**
+
+Gives the link to this section
+
+**latency** \|**rtt**
+
+Gives the latency or round-trip-time for the current connection in seconds. **Note**: You can use any of these commands anytime, even if a foreground process is running at the server and you do not have a prompt.
 
 ------
 
-If you need to run a command that matches any of the keywords described above, use the **[command](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html)** built-in of Bash.
+**Tip**: If you need to run a command that matches any of the keywords described above, use the **[`command`](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html)** built-in of Bash.
 
 # File and directory transfer
 
@@ -131,7 +148,7 @@ If you need to run a command that matches any of the keywords described above, u
 
 ```bash
 take <local path> <remote path> 
-# or
+#### or
 push <local path> <remote path>
 ```
 
@@ -139,21 +156,21 @@ push <local path> <remote path>
 
 ```bash
 bring <remote path> <local path>
-# or
+#### or
 pull <remote path> <local path>
 ```
 
 File transfer is atomic, which guarantees you never end up with a corrupt file, even if the transfer operation gets interrupted or terminated prematurely. If the destination file is existing, it will be overwritten after backup. If the destination path is a directory, the file would be put inside it. The paths can be absolute or relative. As should be intuitive, any relative path would be interpreted with PWD at the corresponding host as its base, i.e. relative local (remote) path would be relative to the client-side (server-side) working directory. Similarly, tilde and shell-variable expansion in the path specifications, are done with respect to the corresponding host.
 
-**Tip**: To transfer directories or a collection of files, archive them first, with [tar](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
+**Tip**: To transfer directories or a collection of files, archive them first, with [`tar`](https://man7.org/linux/man-pages/man1/tar.1.html) for example, and then use the above commands to exchange that single archive file.
 
-**Tip**: To transfer a file from the Windows filesystem in WSL, first change its path to Unix path using the command: wslpath.
+**Tip**: To transfer a file from the Windows filesystem in WSL, first change its path to Unix path using the command: `wslpath`.
 
 **Note**: File transfer is end-to-end encrypted with your Git credentials. To keep your Git repository size small, the files are transferred using free, public file-hosting servers.
 
 # Keyboard-generated job-control signals
 
-All familiar Ctrl key generated signals are supported except Ctrl-\, which has been replaced by Ctrl-e ('e' for exit). Because the user doesn't have the liberty to open a second terminal to control a runaway foreground process that ignores SIGTSTP (as generated with Ctrl-z), GiBBERISh provides Ctrl-*spacebar* hot-key to force pause a foreground process with SIGSTOP - which cannot be ignored or handled.
+All the familiar Ctrl key generated signals are supported except `Ctrl-\`, which has been replaced by `Ctrl-e` (mnemonic: 'e' for exit). Because the user doesn't have the liberty to open a second terminal to control a runaway foreground process that ignores SIGTSTP (as generated with `Ctrl-z`), GiBBERISh provides `Ctrl-<spacebar>` key-binding to force pause a foreground process with SIGSTOP - which cannot be ignored or handled.
 
 # Library, not executable
 
@@ -163,7 +180,7 @@ The *installer*, on the other hand, is an executable script. Hence, do a *chmod 
 
 # Internals (pointers to understand the code)
 
-The client-side and server-side codes are structurally almost the same. This is why a single shell-script suffices for both. There are two types of events:
+The client-side and server-side codes are almost the same structurally. This is why a single shell-script suffices for both. There are two types of events:
 
 1) Internal events: User@client or Bash@server creates new data to push
 
@@ -175,13 +192,13 @@ The Git repository for GiBBERISh has two linear branches, viz. server-branch and
 
 Every iteration of Git-fetch triggers a checkout sequence that tracks all the new commits chronologically, restoring the corresponding version of the abovementioned text file for decryption. Upon successful decryption, the checkout function pushes the data down a pipeline to user (@client) or Bash (@server), before moving on to the next commit in the git-revision-list.
 
-Note that if every user-command was passed using that single text file alone, then all the commands would end up in the queue for Bash@server. To relay a user-generated signal (SIGINT, SIGTSTP, SIGQUIT) to a foreground process on demand, however, we need to route [kill](https://man7.org/linux/man-pages/man1/kill.1.html) commands to a second, parallel shell in the server. We, therefore, need a way to commit commands in the repository other than the single text file mentioned before. GiBBERISh exploits Git's commit-message field for this purpose. Only those commits that carry the user-generated control signals, or any other command that is to be executed by the parallel shell only, would have commit-messages which hold the commands themselves. All other commits have empty commit-messages. Whether the commit is meant for the main shell or the parallel, can therefore be ascertained simply by checking whether the commit-message is empty or not. 
+Note that if every user-command was passed using that single text file alone, then all the commands would end up in the queue for Bash@server. To relay a user-generated signal (SIGINT, SIGTSTP, SIGQUIT) to a foreground process on demand, however, we need to route [`kill`](https://man7.org/linux/man-pages/man1/kill.1.html) commands to a second, parallel shell in the server. We, therefore, need a way to commit commands in the repository other than the single text file mentioned before. GiBBERISh exploits Git's commit-message field for this purpose. Only those commits that carry the user-generated control signals, or any other command that is to be executed by the parallel shell only, would have commit-messages which hold the commands themselves. All other commits have empty commit-messages. Whether the commit is meant for the main shell or the parallel, can therefore be ascertained simply by checking whether the commit-message is empty or not. 
 
 Such commit-message commands, meant for the parallel shell, are mostly kill(@server) and file-download(@client) commands. Hence, they do not contain any sensitive data and are consequently not encrypted to save on time. These commands are called **hook**s. Both server and client share this hook-execution architecture. Hooks are the only way server can make client do some work, such as required during file transfer from server to client.
 
-In contrast with SSH, GiBBERISh does not stream every key-stroke made by the user to the server in real-time. Rather, it first lets the user enter the complete command, then reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate signals at server from particular key-sequences entered at the client, key-binding is done at the user's terminal such that it commits and pushes the appropriate hook to be executed by the parallel shell at server, whenever those keys are pressed by the user.
+In contrast to SSH, GiBBERISh does not stream every keystroke made by the user to the server in real-time. Rather, it first lets the user enter the complete command, then reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate signals at server from particular key-sequences entered at the client, key-binding is done at the client-terminal such that it commits and pushes the appropriate hook to be executed by the parallel shell at server, whenever those keys are pressed by the user.
 
-Addition towards user-comfort: Lately, I have added another file to the repository that stores the current prompt as visible at the server-side terminal. When a foreground process is running in that terminal, this prompt-file becomes empty. Client fetches and checks out this file to remain informed about the current state of the dynamic server-side prompt, and displays the same at the client-side terminal as required. This feature is strictly designed for adding to the user experience and is in no way a necessary part of the GiBBERISh engine, as described in the previous paragraphs.
+*Addition towards user-friendliness*: Lately, I have added another file to the repository that stores the current prompt as visible at the server-side terminal. When a foreground process is running in that terminal, this prompt-file becomes empty. Client fetches and checks out this file to remain informed about the current state of the dynamic server-side prompt, and displays the same at the client-side terminal as required. This feature is strictly designed for adding to the user experience and is in no way a necessary part of the GiBBERISh engine, which is described in the previous paragraphs.
 
 # Bug-reports, Feature-requests, Comments
 
