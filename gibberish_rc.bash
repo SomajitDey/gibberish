@@ -54,9 +54,10 @@ GIBBERISH_fetchd(){
         # When commit message is empty, update worktree only
         # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
         git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
-        if [[ -e "${patfile}" ]]; then
-          gpg --batch --quiet --passphrase-file "${patfile}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
-            || echo 'GIBBERISH: Decryption failed. Perhaps client and server are not using the same passphrase/access-token'
+        if [[ -n "${pat}" ]]; then
+          gpg --batch --quiet --passphrase "${pat}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
+            || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
+            && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
         else
           cat "./${iofile}" > "${incoming}"
         fi
@@ -109,10 +110,10 @@ GIBBERISH_commit(){
   [[ -e "${outgoing}" ]] || return # Check existence to decide whether to wait for lock at all
   ( flock --exclusive 200; cd "${outgoing_dir}"
   [[ -e "${outgoing}" ]] || exit # Check existence after lock has been acquired
-  if [[ -e "${patfile}" ]]; then
+  if [[ -n "${pat}" ]]; then
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
     rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
-    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-file "${patfile}" --symmetric "${snapshot}"
+    gpg --batch --quiet --armor --output "./${iofile}" --passphrase "${pat}" --symmetric "${snapshot}"
   else
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
   fi
@@ -188,6 +189,8 @@ GIBBERISH_prelaunch(){
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
+  
+  export pat="${GIBBERISH_pat:="$(cat "${patfile}" 2>/dev/null)"}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd
@@ -200,6 +203,11 @@ GIBBERISH_prelaunch(){
 
 gibberish-server(){
   # Config specific initialization
+  export GIBBERISH_pat="${1}"
+  # PANIC-BUTTON: When monitoring a remote-access session, if something bad happens, closing the terminal window
+  # kills everything under this session. Activated only for monitored sessions
+  [[ -n "${GIBBERISH_pat}" ]] && trap "pkill -KILL --session $$" exit
+
   export fetch_branch="server"
   export push_branch="client"
   export server_tty="$(tty)"
@@ -357,7 +365,7 @@ GIBBERISH_UL(){
   # In the worst case scenario when everything is down, we can always push the payload through our Git repo
   local payload="$1"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  gpg --batch --quiet --armor --output - --passphrase-file "${patfile}" --symmetric "${payload}" | \
+  gpg --batch --quiet --armor --output - --passphrase "${pat}" --symmetric "${payload}" | \
   curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
   )
 }; export -f GIBBERISH_UL
@@ -368,7 +376,7 @@ GIBBERISH_DL(){
   while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done # Enter subdirectories recursively if needed
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-file "${patfile}" -d
+  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase "${pat}" -d
   )
   if (( $? == 0 )); then
     mv --force --backup='existing' -T "${dlcache}" "${copyto}" && \

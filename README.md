@@ -45,11 +45,11 @@ Because of the dependence on an online Git repository, the time between entering
 5. Secure (GPG-encrypted) file transfer from client to server and vice-versa.
 6. Easy and fast switching between local and remote environments without interrupting the remote session in any way. See *brb* in the *Keywords* section below.
 7. Relays user's keyboard-generated signals, such as Ctrl-c; Ctrl-z to server.
-8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z etc., if necessary.
+8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z, Ctrl-\ etc., if necessary.
 9. Forever free. Given the popularity of Git in DevOps, freemium services such as GitHub are here to stay and they probably will continue hosting small public repositories for free for years to come. GiBBERISh is careful about keeping the repository size as small as possible. So, the size limit of the free-tier plans should never be an issue.
 10. Lightweight: CPU usage is minimal. Polling and busy-waits are avoided wherever possible in favor of event-driven triggers.
 11. Reliable: If any of your machines goes offline, it automatically gets connected once its internet connection is restored. No data is lost. Just make sure your remote host stays up even when there is power-outage.
-12. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. No superuser or admin privilege is required to install or run GiBBERISh. You also hold the perpetual right to adapt the script to your needs.
+12. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. No superuser or admin privilege is required to install or run GiBBERISh. You also hold the perpetual right to adapt the source-code to your needs.
 13. Everything is under your control. You are free to modify the single Bash script that GiBBERISh runs from. You own and manage the upstream repository. If you are connecting to your work computer from your home machine or vice versa, you control both the machines. You also choose who can access your machine, should you ever be granting someone else remote access for purposes of diagnostics, instructions etc. [**Tip**: Revoke their (push) access-token from your upstream account once they are done].
 14. Because Git and Bash are the only main ingredients, GiBBERISh (in an implementation that doesn't use `flock`) maybe run easily on [Git-Bash](https://gitforwindows.org/) from the Git for Windows package. However, that might be unnecessary, given that Windows 10 now ships with a subsystem for Linux ([WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
 15. Stores command history for the session. Use the Up, Down arrow keys or Ctrl-p and Ctrl-n to access history as usual.
@@ -81,6 +81,8 @@ gibberish
 ```
 
 After 6-9 seconds, you should get the server's command prompt.
+
+**Note**: GiBBERISh allows, possibly unnecessarily, upstream repositories that are on your local disk or NFS.
 
 # Keywords or built-in commands
 
@@ -187,6 +189,19 @@ Then, open another terminal and run:
 export GIBBERISH=client
 gibberish
 ```
+
+# Granting remote-access while you monitor
+
+There might be desperate situations where you need to grant access to your local machine to someone else. To do that safely, do the following.
+
+1. If your machine is not already configured as server, install GiBBERISh to run as server.
+2. [Create a temporary access-token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) at your upstream account.
+3. Send the access-token to the person you are granting remote access to and ask her to install GiBBERISh as client with the given token as password/PAT. [If she already has GiBBERISh client configured with a different password, ask her to backup her `~/.gibberish` directory before reinstallation. After the session, she can simply restore the backup.]
+4. Run: `gibberish-server <access-token>`
+5. Ask the other person to run: `gibberish`
+6. Monitor everything on-screen. Whenever you feel you need to interrupt any command the remote client is running on your machine, use `Ctrl-c`,  `Ctrl-z` or `Ctrl-\` as usual. In the worst case, simply close the terminal. It would kill all processes spawned in that session.
+7. After the session is over, close your terminal to kill the server.
+8. Revoke the access-token from your upstream account.
 
 # Library, not executable
 
