@@ -40,11 +40,18 @@ uri="${url#*:\/\/}"
 protocol="${url%:\/\/*}"
 
 if [[ "${protocol}" == "file" ]] || [[ "${uri}" == "${protocol}" ]]; then
+  [[ -d "${uri}" ]] || { echo "No such directory" ; exit 1;}
+  uri="$(cd "${uri}" && pwd)" # Get the absolute path
   protocol="file"
   localhost="true"
   fetch_url="${uri}"
   push_url="${uri}"
-  unset pass
+  if [[ "${uri}" == /mnt/* ]]; then
+    echo -e \\n"NFS is not very secure. If you want encryption, please provide a passphrase. Otherwise, simply press ENTER"
+    read -ep 'Passphrase: ' pass
+  else
+    unset pass
+  fi
 else
   protocol="https" # Because https will be allowed by every firewall, unlike ssh://
   echo -e \\n'Using https:// for git-push'

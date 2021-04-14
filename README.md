@@ -45,11 +45,11 @@ Because of the dependence on an online Git repository, the time between entering
 5. Secure (GPG-encrypted) file transfer from client to server and vice-versa.
 6. Easy and fast switching between local and remote environments without interrupting the remote session in any way. See *brb* in the *Keywords* section below.
 7. Relays user's keyboard-generated signals, such as Ctrl-c; Ctrl-z to server.
-8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z, Ctrl-*spacebar* etc., if necessary.
+8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z etc., if necessary.
 9. Forever free. Given the popularity of Git in DevOps, freemium services such as GitHub are here to stay and they probably will continue hosting small public repositories for free for years to come. GiBBERISh is careful about keeping the repository size as small as possible. So, the size limit of the free-tier plans should never be an issue.
 10. Lightweight: CPU usage is minimal. Polling and busy-waits are avoided wherever possible in favor of event-driven triggers.
 11. Reliable: If any of your machines goes offline, it automatically gets connected once its internet connection is restored. No data is lost. Just make sure your remote host stays up even when there is power-outage.
-12. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. You also hold the perpetual right to adapt the script to your needs.
+12. Hassle-free installation, portability and flexibility: GiBBERISh only runs Git, and some basic Unix commands, all from a short, simple, stupid (KISS) Bash script. Most current Linux distributions ship with Git and Bash both. Hence, GiBBERISh should run readily on those. No superuser or admin privilege is required to install or run GiBBERISh. You also hold the perpetual right to adapt the script to your needs.
 13. Everything is under your control. You are free to modify the single Bash script that GiBBERISh runs from. You own and manage the upstream repository. If you are connecting to your work computer from your home machine or vice versa, you control both the machines. You also choose who can access your machine, should you ever be granting someone else remote access for purposes of diagnostics, instructions etc. [**Tip**: Revoke their (push) access-token from your upstream account once they are done].
 14. Because Git and Bash are the only main ingredients, GiBBERISh (in an implementation that doesn't use `flock`) maybe run easily on [Git-Bash](https://gitforwindows.org/) from the Git for Windows package. However, that might be unnecessary, given that Windows 10 now ships with a subsystem for Linux ([WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
 15. Stores command history for the session. Use the Up, Down arrow keys or Ctrl-p and Ctrl-n to access history as usual.
@@ -58,13 +58,13 @@ Because of the dependence on an online Git repository, the time between entering
 
 First, [create a dedicated repository](https://docs.github.com/en/github/getting-started-with-github/create-a-repo) at any free Git hosting service such as https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/. The repository can be completely empty, i.e. without any commits. **Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for your account.
 
-At the Linux machine that you want to use as server, run the *installer* script: 
+At the Linux machine that you want to use as server, run the *installer* script (no superuser or admin privilege required): 
 
 ```bash
 ./installer
 ```
 
-Close and reopen the terminal to make the installation take effect.
+Then, simply follow the on-screen instructions.
 
 To start the server, run: 
 
@@ -171,6 +171,22 @@ File transfer is atomic, which guarantees you never end up with a corrupt file, 
 # Keyboard-generated job-control signals
 
 All the familiar Ctrl key generated signals are supported except `Ctrl-\`, which has been replaced by `Ctrl-e` (mnemonic: 'e' for exit). Because the user doesn't have the liberty to open a second terminal to control a runaway foreground process that ignores SIGTSTP (as generated with `Ctrl-z`), GiBBERISh provides `Ctrl-<spacebar>` key-binding to force pause a foreground process with SIGSTOP - which cannot be ignored or handled.
+
+# Try GiBBERISh at localhost
+
+If you are a first-time user, you may want to get familiar with GiBBERISh at your local machine. To do that, install GiBBERISh twice, once as server and then as client. Now, open a terminal and run: 
+
+```bash
+export GIBBERISH=server
+gibberish-server
+```
+
+Then, open another terminal and run: 
+
+```bash
+export GIBBERISH=client
+gibberish
+```
 
 # Library, not executable
 
