@@ -97,7 +97,7 @@ GIBBERISH_fetchd(){
       git reset --soft --quiet FETCH_HEAD # Or, replace FETCH_HEAD with "origin/${fetch_branch}"
 
       # Fetching is iterative - hence it can trigger checkout continuously. Thus, nonblock flock is ok
-      flock --nonblock --no-fork "${incoming_dir}" -c GIBBERISH_checkout &
+      flock --nonblock "${incoming_dir}" -c GIBBERISH_checkout &
     done
     }; export -f GIBBERISH_fetch_loop
 
@@ -177,13 +177,13 @@ GIBBERISH_prelaunch(){
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   # git restore --quiet "./${iofile}" 2>/dev/null # Use for recent Git versions only
   git checkout --quiet "./${iofile}" 2>/dev/null # Same as git-restore above
-  git pull --ff-only --no-verify --quiet origin "${fetch_branch}" 2>"${fetch_error_log}" || \
+  git pull --ff-only --quiet origin "${fetch_branch}" 2>"${fetch_error_log}" || \
     { echo "Pull failed: ${fetch_branch}. Check network connection." >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
-  git pull --rebase --no-verify --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
+  git pull --rebase --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
     { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
   git push --quiet --no-verify origin "${push_branch}" 2>"${push_error_log}" || \
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok

@@ -113,7 +113,7 @@ git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}") 
 
 # Create outgoing directory; checked out with appropriate branch
 git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
-(git worktree add --quiet -b "${talkto}" "${outgoing_dir}"
+(git worktree add -b "${talkto}" "${outgoing_dir}"
 git push --quiet origin "${talkto}") || \
 { echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
 

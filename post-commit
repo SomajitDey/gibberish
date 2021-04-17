@@ -3,7 +3,7 @@
 # Brief: Push till successful; pull when push fails and try again
 
 until (date;git push --quiet --no-verify origin "${push_branch}") &>>"${push_error_log}"; do
-  (date;git pull --rebase --quiet --no-verify origin "${push_branch}") &>>"${pull_error_log}"
+  (date;git pull --rebase --quiet origin "${push_branch}") &>>"${pull_error_log}"
 done
 
 cat /dev/null > "${push_error_log}" 2>"${pull_error_log}" # Clean up log when normal operation resumes
