@@ -225,8 +225,8 @@ gibberish-server(){
   local bash_init='
   echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
   . "${HOME}/.bashrc"
-  PS1="GiBBERISh-server:\w$ "
-  PROMPT_COMMAND="echo -n \"\${PS1@P}\" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
+  PS1="GiBBERISh-server$ "
+  PROMPT_COMMAND="echo -n \"GiBBERISH-server\$ \" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
   PS0="\$(echo -n > ${promptfile_abs}; tput cuu1 2>/dev/null ; tput ed 2>/dev/null)" # After cmd is read and b4 execution begins
   # Empties the promptfile because an fg process is just about to start
   # tputs are to avoid showing the commandline twice to user@client
@@ -308,7 +308,8 @@ gibberish(){
       GIBBERISH_hook_commit "GIBBERISH_hook_commit 'kill -KILL ${killme}; echo Hello from GIBBERISH-server; GIBBERISH_prompt'"
       ;;
     latency|rtt)
-      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo \$((EPOCHSECONDS-${EPOCHSECONDS}))s; GIBBERISH_prompt'"
+      # Using $(date +%s) instead of ${EPOCHSECONDS} for comaptibility with older version of Bash (e.g. Ubuntu 16.04)
+      GIBBERISH_hook_commit "GIBBERISH_hook_commit 'echo \$((\$(date +%s)-$(date +%s)))s; GIBBERISH_prompt'"
       ;;
     local)
       (eval "${arg:=pwd}"); GIBBERISH_prompt
