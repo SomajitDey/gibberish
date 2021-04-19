@@ -141,7 +141,9 @@ GIBBERISH_write(){
   declare -x line
   IFS=
   while pkill -0 --pidfile "${fetch_pid_file}"; do
-    read -r -d '' -t "${timeout}" line
+    # Because Ubuntu 16.04 bash won't retain partial input on timeout, we have to do the following two lines
+    line=
+    while read -N1 -t "${timeout}" letter; do line="${line}${letter}"; done
     [[ -z "${line}" ]] && continue
     flock -x "${write_lock}" -c 'echo -n "${line}" >> "${outgoing}"'
     GIBBERISH_commit &
