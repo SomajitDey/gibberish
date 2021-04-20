@@ -226,11 +226,14 @@ gibberish-server(){
   echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
   export OLDPWD="/tmp"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
+  # The following function is a workround for ${PS1@P} for compatibility with older bash which doesnt support @P
+  store_prompt(){ local buffer="${PWD%%${HOME}*}"; echo -n "GiBBERISH-server:${buffer:-~${PWD#${HOME}}}$ ";}; export -f store_prompt
   local bash_init='
   echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
   . "${HOME}/.bashrc"
   PS1="GiBBERISh-server:\w$ "
-  PROMPT_COMMAND="echo -n \"GiBBERISH-server\$ \" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
+  PROMPT_COMMAND="store_prompt > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
+  # Following is a work-around for PS0=$(code) for compatibility with older bash which doesnt support PS0
   pre-run(){ echo -n > ${promptfile_abs} ; tput cuu1 ; tput ed ;} 2>/dev/null # After cmd is read and b4 execution begins
   # Empties the promptfile because an fg process is just about to start
   # tputs are to avoid showing the commandline twice to user@client
@@ -283,7 +286,7 @@ gibberish(){
   local histfile="${GIBBERISH_DIR}/history.txt"
   echo "help" > "${histfile}" # This file initialization is necessary for the following history builtin to work
   history -c; history -r "${histfile}" # Clean previous history, then initialize history-list
-  cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
+  cd "${prelaunch_oldpwd}" 2>/dev/null ; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
   while kill -0 $(cat "${fetch_pid_file}") ; do
     read -re -p"$(tput sgr0 2>/dev/null)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
 
