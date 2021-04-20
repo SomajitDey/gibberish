@@ -55,7 +55,9 @@ GIBBERISH_fetchd(){
         # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
         git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
         if [[ -n "${pat}" ]]; then
-          gpg --batch --quiet --passphrase-fd 3 --decrypt "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
+          # --ignore-mdc-error is to make things compatible with older versions of GPG
+          # --passphrase-fd is used instead of --passphrase "$pat" to avoid GPG-agent problems in older versions of GPG
+          gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 --decrypt "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
             || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
             && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
         else
@@ -82,7 +84,7 @@ GIBBERISH_fetchd(){
     local loop=true; trap 'loop=false' INT TERM QUIT HUP
     while ${loop};do
 #      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
-      if ! (date;timeout 10 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
+      if ! (date;timeout 8 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
         [[ -v warning ]] || local warning="$(echo 'Check network connection...To exit, use command: brb' >/dev/tty)"
         continue
       else
@@ -229,7 +231,7 @@ gibberish-server(){
   . "${HOME}/.bashrc"
   PS1="GiBBERISh-server:\w$ "
   PROMPT_COMMAND="echo -n \"GiBBERISH-server\$ \" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
-  PS0="\$(echo -n > ${promptfile_abs}; tput cuu1 2>/dev/null ; tput ed 2>/dev/null)" # After cmd is read and b4 execution begins
+  pre-run(){ echo -n > ${promptfile_abs} ; tput cuu1 ; tput ed ;} 2>/dev/null # After cmd is read and b4 execution begins
   # Empties the promptfile because an fg process is just about to start
   # tputs are to avoid showing the commandline twice to user@client
   '
@@ -261,7 +263,7 @@ gibberish(){
     GIBBERISH_prompt
     rm -f  "${brbtag}"
   else
-    echo 'echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
+    echo 'pre-run ; echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
   fi
 
   # Trap terminal based signals to relay them to server foreground process
@@ -343,7 +345,7 @@ gibberish(){
         cmd="$(cat "${script}")"
       fi
       # The following echo is not the bash-builtin; otherwise flock would require -c. This is for demo only. Use builtin always
-      flock -x "${write_lock}" echo "${cmd}" >> "${outgoing}"; GIBBERISH_commit &
+      flock -x "${write_lock}" echo "pre-run ; ${cmd}" >> "${outgoing}"; GIBBERISH_commit &
       ;;
     esac
   done
@@ -379,7 +381,7 @@ GIBBERISH_DL(){
   while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done # Enter subdirectories recursively if needed
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-fd 3 -d 3<><(echo "${pat}")
+  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --ignore-mdc-error --passphrase-fd 3 -d 3<><(echo "${pat}")
   )
   if (( $? == 0 )); then
     mv --force --backup='existing' -T "${dlcache}" "${copyto}" && \
