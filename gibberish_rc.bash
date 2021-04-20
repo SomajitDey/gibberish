@@ -57,7 +57,7 @@ GIBBERISH_fetchd(){
         if [[ -n "${pat}" ]]; then
           # --ignore-mdc-error is to make things compatible with older versions of GPG
           # --passphrase-fd is used instead of --passphrase "$pat" to avoid GPG-agent problems in older versions of GPG
-          gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 --decrypt "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
+          gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 -d "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
             || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
             && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
         else
@@ -84,7 +84,7 @@ GIBBERISH_fetchd(){
     local loop=true; trap 'loop=false' INT TERM QUIT HUP
     while ${loop};do
 #      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
-      if ! (date;timeout 8 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
+      if ! (date;timeout 12 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
         [[ -v warning ]] || local warning="$(echo 'Check network connection...To exit, use command: brb' >/dev/tty)"
         continue
       else
@@ -115,7 +115,7 @@ GIBBERISH_commit(){
   if [[ -n "${pat}" ]]; then
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
     rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
-    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-fd 3 --symmetric "${snapshot}" 3<><(echo "${pat}")
+    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-fd 3 -c --cipher-algo AES256 "${snapshot}" 3<><(echo "${pat}")
   else
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
   fi
@@ -308,7 +308,7 @@ gibberish(){
       break
       ;;
     ping|hey|hello|hi)
-      { (sleep 10; echo 'Seems GIBBERISH-server is down'; GIBBERISH_prompt)& local killme="$!";} 2>/dev/null
+      { (sleep 13; echo 'Seems GIBBERISH-server is down'; GIBBERISH_prompt)& local killme="$!";} 2>/dev/null
       GIBBERISH_hook_commit "GIBBERISH_hook_commit 'kill -KILL ${killme}; echo Hello from GIBBERISH-server; GIBBERISH_prompt'"
       ;;
     latency|rtt)
@@ -342,7 +342,7 @@ gibberish(){
         eval local script="${arg}" 2>/dev/null
         [[ -f "${script}" ]] || { echo "Script doesn't exist." \
              echo "You can enter next command now or press ENTER to get the server's prompt"; continue;}
-        cmd="$(cat "${script}")"
+        cmd="$(cat <(echo "echo 'Running a list of commands interactively below...'") "${script}")"
       fi
       # The following echo is not the bash-builtin; otherwise flock would require -c. This is for demo only. Use builtin always
       flock -x "${write_lock}" echo "pre-run ; ${cmd}" >> "${outgoing}"; GIBBERISH_commit &
@@ -370,7 +370,7 @@ GIBBERISH_UL(){
   # In the worst case scenario when everything is down, we can always push the payload through our Git repo
   local payload="$1"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  gpg --batch --quiet --armor --output - --passphrase-fd 3 --symmetric "${payload}" 3<><(echo "${pat}") | \
+  gpg --batch --quiet --armor --output - --passphrase-fd 3 --symmetric --cipher-algo AES256 "${payload}" 3<><(echo "${pat}") | \
   curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
   )
 }; export -f GIBBERISH_UL
