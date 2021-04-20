@@ -109,7 +109,7 @@ git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}") 
 
 # Create outgoing directory; checked out with appropriate branch
 # Using the following instead of the much simpler git-worktree for backward compatibility with older Ubuntus
-git clone "${incoming_dir}" "${outgoing_dir}"
+cp -r "${incoming_dir}" "${outgoing_dir}"
 cd "${outgoing_dir}"
 git remote set-url origin "${push_url}"
 git config --local user.name "GiBBERISh"

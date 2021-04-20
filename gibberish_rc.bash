@@ -55,7 +55,7 @@ GIBBERISH_fetchd(){
         # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
         git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
         if [[ -n "${pat}" ]]; then
-          gpg --batch --quiet --passphrase "${pat}" --decrypt "./${iofile}" > "${incoming}" 2>/dev/null \
+          gpg --batch --quiet --passphrase-fd 3 --decrypt "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
             || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
             && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
         else
@@ -82,7 +82,7 @@ GIBBERISH_fetchd(){
     local loop=true; trap 'loop=false' INT TERM QUIT HUP
     while ${loop};do
 #      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
-      if ! (date; git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
+      if ! (date;timeout 10 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
         [[ -v warning ]] || local warning="$(echo 'Check network connection...To exit, use command: brb' >/dev/tty)"
         continue
       else
@@ -113,7 +113,7 @@ GIBBERISH_commit(){
   if [[ -n "${pat}" ]]; then
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
     rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
-    gpg --batch --quiet --armor --output "./${iofile}" --passphrase "${pat}" --symmetric "${snapshot}"
+    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-fd 3 --symmetric "${snapshot}" 3<><(echo "${pat}")
   else
     flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
   fi
@@ -368,7 +368,7 @@ GIBBERISH_UL(){
   # In the worst case scenario when everything is down, we can always push the payload through our Git repo
   local payload="$1"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  gpg --batch --quiet --armor --output - --passphrase "${pat}" --symmetric "${payload}" | \
+  gpg --batch --quiet --armor --output - --passphrase-fd 3 --symmetric "${payload}" 3<><(echo "${pat}") | \
   curl --silent --show-error --upload-file - https://transfer.sh/payload.asc > "${file_transfer_url}"
   )
 }; export -f GIBBERISH_UL
@@ -379,7 +379,7 @@ GIBBERISH_DL(){
   while [[ -d "${copyto}" ]]; do copyto="${copyto}/${filename}"; done # Enter subdirectories recursively if needed
   local dlcache="${GIBBERISH_DIR}/dlcache.tmp"; rm -f "${dlcache}"
   ( set -o pipefail # Sub-shell makes sure pipefail is not inherited by anyone else
-  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase "${pat}" -d
+  curl -s -S "${url}" | gpg --batch -q -o "${dlcache}" --passphrase-fd 3 -d 3<><(echo "${pat}")
   )
   if (( $? == 0 )); then
     mv --force --backup='existing' -T "${dlcache}" "${copyto}" && \
