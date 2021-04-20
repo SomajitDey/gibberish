@@ -11,7 +11,6 @@
 export rcfile='gibberish_rc.bash'
 
 command -v git &>/dev/null || { echo 'Install git' ; exit 1;}
-man git-worktree &>/dev/null || { echo 'Too old version of git' ; exit 1;}
 command -v flock &>/dev/null || { echo 'Install flock' ; exit 1;}
 command -v gpg &>/dev/null || { echo 'Install gpg' ; exit 1;}
 
@@ -101,9 +100,6 @@ mkdir -p "${GIBBERISH_DIR}"
 git clone --quiet "${fetch_url}" "${incoming_dir}" || { echo -e \\n'Git-clone failed, exiting'; exit 1;}
 
 cd "${incoming_dir}"
-git remote set-url --push origin "${push_url}"
-git config --local user.name "GiBBERISh"
-git config --local user.email "gibberish@${config}"
 
 # Check if repo has atleast one commit; create a commit if there is none
 git checkout --quiet "${config}" &>/dev/null || \
@@ -112,12 +108,18 @@ git commit --allow-empty -m 'Root commit'; git push --quiet origin "${config}") 
 { echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
 
 # Create outgoing directory; checked out with appropriate branch
-git worktree add "${outgoing_dir}" "${talkto}" &>/dev/null || \
-(git worktree add -b "${talkto}" "${outgoing_dir}"
-git push --quiet origin "${talkto}") || \
+# Using the following instead of the much simpler git-worktree for backward compatibility with older Ubuntus
+git clone "${incoming_dir}" "${outgoing_dir}"
+cd "${outgoing_dir}"
+git remote set-url origin "${push_url}"
+git config --local user.name "GiBBERISh"
+git config --local user.email "gibberish@${config}"
+git checkout --quiet "${talkto}" &>/dev/null || \
+(git checkout --quiet -b "${talkto}"
+git commit --allow-empty -m 'Root commit'; git push --quiet origin "${talkto}") || \
 { echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
 
-ln "${code_dir}/post-commit" "${incoming_dir}/.git/hooks/post-commit" || \
+ln "${code_dir}/post-commit" "${outgoing_dir}/.git/hooks/post-commit" || \
   { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
 
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"

@@ -2,7 +2,7 @@
 
 # Brief: Push till successful; pull when push fails and try again
 
-until (date;git push --quiet --no-verify origin "${push_branch}") &>>"${push_error_log}"; do
+until (date;git push --quiet origin "${push_branch}") &>>"${push_error_log}"; do
   (date;git pull --rebase --quiet origin "${push_branch}") &>>"${pull_error_log}"
 done
 

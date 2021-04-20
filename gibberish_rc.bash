@@ -82,7 +82,7 @@ GIBBERISH_fetchd(){
     local loop=true; trap 'loop=false' INT TERM QUIT HUP
     while ${loop};do
 #      git fetch --quiet origin "${fetch_branch}" || loop=false # Using 'break' would cause any pending checkout to be skipped
-      if ! (date;timeout 5 git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
+      if ! (date; git fetch --quiet origin "${fetch_branch}") &>>"${fetch_error_log}"; then
         [[ -v warning ]] || local warning="$(echo 'Check network connection...To exit, use command: brb' >/dev/tty)"
         continue
       else
@@ -122,7 +122,7 @@ GIBBERISH_commit(){
   mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null # || cat /dev/null > "./${promptfile_rel}"
 
   git add .
-  git commit --quiet --no-verify --no-gpg-sign --allow-empty --allow-empty-message -m ''
+  git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
   ) 200>"${commit_lock}"
 }; export -f GIBBERISH_commit
@@ -131,7 +131,7 @@ GIBBERISH_hook_commit(){
   # Usage: GIBBERISH_hook_commit <command string to be passed to bash>
   local hook="${1}"
   ( flock --exclusive 200; cd "${outgoing_dir}"
-  git commit --quiet --no-verify --no-gpg-sign --allow-empty -m "${hook}"
+  git commit --quiet --no-gpg-sign --allow-empty -m "${hook}"
   ) 200>"${commit_lock}"
 }; export -f GIBBERISH_hook_commit
 
@@ -140,7 +140,7 @@ GIBBERISH_write(){
   local timeout="0.1" # Interval for polling
   declare -x line
   IFS=
-  while pkill -0 --pidfile "${fetch_pid_file}"; do
+  while kill -0 $(cat "${fetch_pid_file}"); do
     # Because Ubuntu 16.04 bash won't retain partial input on timeout, we have to do the following two lines
     line=
     while read -N1 -t "${timeout}" letter; do line="${line}${letter}"; done
@@ -160,7 +160,7 @@ GIBBERISH_read(){
 
   # Because $incoming is a named pipe, cat would die once the process writing to the pipe finishes.
   # Hence the loop, but only as long as GIBBERISH_fetch_loop is on. 
-  while pkill -0 --pidfile "${fetch_pid_file}"; do
+  while kill -0 $(cat "${fetch_pid_file}"); do
     cat "${incoming}"
   done
 }; export -f GIBBERISH_read
@@ -187,7 +187,7 @@ GIBBERISH_prelaunch(){
   [[ -e "${brbtag}" ]] || git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
   git pull --rebase --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
     { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
-  git push --quiet --no-verify origin "${push_branch}" 2>"${push_error_log}" || \
+  git push --quiet origin "${push_branch}" 2>"${push_error_log}" || \
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
@@ -198,7 +198,7 @@ GIBBERISH_prelaunch(){
   GIBBERISH_fetchd
 
   # Trap exit from main sub-shell body of gibberish and gibberish-server
-  trap 'pkill -TERM --parent "${BASHPID}"; echo -n > "${incoming}"' exit
+  trap 'pkill -TERM -P "${BASHPID}"; echo -n > "${incoming}"' exit
   # INT makes bash exit fg loops; TERM exits bg loops; echo -n sends EOF to any proc listening to pipe
   return
 }; export -f GIBBERISH_prelaunch
@@ -208,7 +208,7 @@ gibberish-server(){
   export GIBBERISH_pat="${1}"
   # PANIC-BUTTON: When monitoring a remote-access session, if something bad happens, closing the terminal window
   # kills everything under this session. Activated only for monitored sessions
-  [[ -n "${GIBBERISH_pat}" ]] && trap "pkill -KILL --session $$" exit
+  [[ -n "${GIBBERISH_pat}" ]] && trap "pkill -KILL -s $$" exit
 
   export fetch_branch="server"
   export push_branch="client"
@@ -227,7 +227,7 @@ gibberish-server(){
   local bash_init='
   echo $$ > "${bashpidfile}" # Can also use $BASHPID instead of $$
   . "${HOME}/.bashrc"
-  PS1="GiBBERISh-server$ "
+  PS1="GiBBERISh-server:\w$ "
   PROMPT_COMMAND="echo -n \"GiBBERISH-server\$ \" > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
   PS0="\$(echo -n > ${promptfile_abs}; tput cuu1 2>/dev/null ; tput ed 2>/dev/null)" # After cmd is read and b4 execution begins
   # Empties the promptfile because an fg process is just about to start
@@ -236,7 +236,7 @@ gibberish-server(){
   
   # If client sends exit or logout, new shell must launch for a fresh new user session. Hence loop follows.
   trap 'kill -KILL $BASHPID' HUP
-  while pkill -0 --pidfile "${fetch_pid_file}"; do
+  while kill -0 $(cat "${fetch_pid_file}"); do
     bash --rcfile <(echo "${bash_init}") -i # Interactive bash attached to terminal. Otherwise PS0 & PROMPT_COMMAND would be useless.
     # Also user won't get a PS1 prompt after execution of her/his command finishes or notification when bg jobs exit
   done < <(GIBBERISH_read | tee /dev/tty) |& tee /dev/tty | GIBBERISH_write
@@ -282,7 +282,7 @@ gibberish(){
   echo "help" > "${histfile}" # This file initialization is necessary for the following history builtin to work
   history -c; history -r "${histfile}" # Clean previous history, then initialize history-list
   cd "${prelaunch_oldpwd}"; cd "${prelaunch_pwd}" # So that user can do ~-/ and ~/ in push/take, pull/bring and rc
-  while pkill -0 --pidfile "${fetch_pid_file}" ; do
+  while kill -0 $(cat "${fetch_pid_file}") ; do
     read -re -p"$(tput sgr0 2>/dev/null)" cmd # Purpose of the invisible prompt is to stop backspace from erasing server's command prompt
 
     history -s ${cmd} # Save last-read command to history-list
@@ -295,7 +295,7 @@ gibberish(){
       GIBBERISH_prompt
       ;;
     exit|logout|quit|bye|hup|brb)
-      pkill -TERM --pidfile "${fetch_pid_file}" # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
+      kill -TERM $(cat "${fetch_pid_file}") # Close incoming channel (otherwise GIBBERISH_checkout might wait on $incoming)
       stty "${saved_stty_config}" # Bring back original key-binding; we could also use (if needed): stty intr ^C
       if [[ "${cmd}" == brb ]]; then
         touch "${brbtag}"
@@ -356,9 +356,9 @@ GIBBERISH_fg_kill(){
   local SIG="${1}"; echo -n "GIBBERISH client sent ${SIG} "
   # TPGID gives the fg proc group on the tty the process is connected to, or -1 if the process is not connected to a tty
   local fg_pgid="$(ps --tty "${server_tty}" -o tpgid= | awk NR==1)"
-  pkill -${SIG} --pgroup ${fg_pgid} # Relay signal to foreground process group of user in server
+  pkill -${SIG} -g ${fg_pgid} # Relay signal to foreground process group of user in server
   # Relay signal to current bash in server that user is interacting with only if HUP
-  [[ "${SIG}" == HUP ]] && pkill -"${SIG}" --pidfile "${bashpidfile}" 2>/dev/null
+  [[ "${SIG}" == HUP ]] && kill -"${SIG}" $(cat "${bashpidfile}") 2>/dev/null
 }; export -f GIBBERISH_fg_kill
 
 GIBBERISH_UL(){
