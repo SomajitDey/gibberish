@@ -116,13 +116,27 @@ cd "${outgoing_dir}"
 git remote set-url origin "${push_url}"
 git config --local user.name "GiBBERISh"
 git config --local user.email "gibberish@${config}"
-git checkout --quiet "${talkto}" &>/dev/null || \
-(git checkout --quiet -b "${talkto}"
-git commit --allow-empty -m 'Root commit'; git push --quiet origin "${talkto}") || \
-{ echo -e \\n'Oops, something failed. Reinstall.'; exit 1;}
+git checkout --quiet "${talkto}" &>/dev/null || git checkout --quiet -b "${talkto}"
+(touch "${iofile}"; git add "${iofile}";
+git commit --allow-empty -m ':'; git push --quiet origin "${talkto}") || \
+{ echo -e \\n'Oops, something failed. Reinstall with correct credentials.'; exit 1;}
 
 ln "${code_dir}/post-commit" "${outgoing_dir}/.git/hooks/post-commit" || \
   { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
+
+if [[ "${domain}" == "github.com" ]]; then
+  if (command -v jq && command -v base64) &>/dev/null; then
+    repo="${uri##*/}"; repo="${repo%.git}"
+    echo "-X PUT -d @${api_payload} -u ${uid}:${pass} https://api.github.com/repos/${uid}/${repo}/contents/${iofile}" \
+    > "${api_options_file}"
+    content="\"$(cat ${outgoing_dir}/${iofile} | base64)\""
+    jq ".content=${content} | .branch=\"${talkto}\"" < <(echo {}) > "${api_json_template}"
+  else
+    echo -e \\n"Tip: Install the programs: 'jq' and 'base64' for decreasing latency"
+  fi
+else
+  [[ "${protocol}" == https ]] && echo -e \\n"Tip: Use github.com as upstream for decreasing latency"
+fi
 
 cat <(echo "export GIBBERISH=${GIBBERISH}") "${code_dir}/${rcfile}" > "${HOME}/.${rcfile}"
 run_command="source ${HOME}/.${rcfile}"

@@ -30,6 +30,10 @@ GIBBERISH_filesys(){
   export push_error_log="${GIBBERISH_DIR}/push_error.log"
   export pull_error_log="${GIBBERISH_DIR}/pull_error.log"
   export fetch_error_log="${GIBBERISH_DIR}/fetch_error.log"
+
+  export api_options_file="${GIBBERISH_DIR}/api"
+  export api_json_template="${GIBBERISH_DIR}/api.json"
+  export api_payload="${GIBBERISH_DIR}/api.pl"
 }; export -f GIBBERISH_filesys
 
 GIBBERISH_fetchd(){  
@@ -114,8 +118,8 @@ GIBBERISH_commit(){
   # Commit the current prompt, if any, by appending below PGP block. Client-side execution of this line is inconsequential
   [[ -e "${promptfile_abs}" ]] && cat "${promptfile_abs}" >> "./${iofile}"
 
-  git add .
-  git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m ''
+  git add "${iofile}"
+  GIBBERISH_push_api || git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m ''
   # Allow empty commit above in case io.txt is same as previous
   ) 200>"${commit_lock}"
 }; export -f GIBBERISH_commit
@@ -124,7 +128,7 @@ GIBBERISH_hook_commit(){
   # Usage: GIBBERISH_hook_commit <command string to be passed to bash>
   local hook="${1}"
   ( flock --exclusive 200; cd "${outgoing_dir}"
-  git commit --quiet --no-gpg-sign --allow-empty -m "${hook}"
+  GIBBERISH_push_api "${hook}" || git commit --quiet --no-gpg-sign --allow-empty -m "${hook}"
   ) 200>"${commit_lock}"
 }; export -f GIBBERISH_hook_commit
 
@@ -182,6 +186,15 @@ GIBBERISH_prelaunch(){
     { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
   git push --quiet origin "${push_branch}" 2>"${push_error_log}" || \
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
+
+  if [[ -e "${api_json_template}" ]] && (command -v jq && command -v base64) &>/dev/null; then
+    export api="true"
+    local sha="\"$(git cat-file -p ${push_branch}^{tree} | grep --line-buffered "${iofile}$" | awk '{ print $3 }')\""
+    cp "${api_json_template}" "${api_payload}"
+    jq ".sha=${sha}|.message=\"\"" "${api_payload}" > "${api_json_template}"
+  else
+    export api="false"
+  fi
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
   
@@ -402,3 +415,18 @@ GIBBERISH_prompt(){
   # Meant to be used by client only
   tail -n1 "${incoming_dir}/${iofile}" # Show server prompt
 }; export -f GIBBERISH_prompt
+
+GIBBERISH_push_api(){
+  # Ref: https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
+  if [[ "${api}" != "true" ]];then return 1; fi
+  if [[ -n "${1}" ]];then
+    local message="\"${1}\""
+    jq ".message=${message}" "${api_json_template}" > "${api_payload}"
+  else
+    local content="\"$(cat ${outgoing_dir}/${iofile} | base64)\""
+    jq ".content=${content}" "${api_json_template}" > "${api_payload}"
+  fi
+  local sha="\"$(xargs curl -sf < "${api_options_file}" | jq -r '.content.sha')\""
+  [[ -z "${sha}" ]] && return 2 # Go and try non-api route
+  jq ".sha=${sha}|.message=\"\"" "${api_payload}" > "${api_json_template}"
+} 2>"${GIBBERISH_DIR}/api.log"; export -f GIBBERISH_push_api
