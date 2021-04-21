@@ -181,10 +181,11 @@ GIBBERISH_prelaunch(){
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  [[ -e "${brbtag}" ]] || git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
+  git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
   git pull --rebase --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
     { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
-  git push --quiet origin "${push_branch}" 2>"${push_error_log}" || \
+  [[ -e "${brbtag}" ]] || \
+    { echo "Checking credentials...please wait";git push --quiet origin "${push_branch}" 2>"${push_error_log}";} || \
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   if [[ -e "${api_json_template}" ]] && (command -v jq && command -v base64) &>/dev/null; then
@@ -206,6 +207,8 @@ GIBBERISH_prelaunch(){
   # Trap exit from main sub-shell body of gibberish and gibberish-server
   trap 'pkill -TERM -P "${BASHPID}"; echo -n > "${incoming}"' exit
   # INT makes bash exit fg loops; TERM exits bg loops; echo -n sends EOF to any proc listening to pipe
+  
+  echo "Configuration OK"
   return
 }; export -f GIBBERISH_prelaunch
 
@@ -271,6 +274,7 @@ gibberish(){
     GIBBERISH_prompt
     rm -f  "${brbtag}"
   else
+    echo -e \\n"Connecting to server..."\\n
     echo 'pre-run ; echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
   fi
 
@@ -426,7 +430,7 @@ GIBBERISH_push_api(){
     local content="\"$(cat ${outgoing_dir}/${iofile} | base64)\""
     jq ".content=${content}" "${api_json_template}" > "${api_payload}"
   fi
-  local sha="\"$(xargs curl -sf < "${api_options_file}" | jq -r '.content.sha')\""
+  local sha="$(xargs curl -sf < "${api_options_file}" | jq -r '.content.sha')"
   [[ -z "${sha}" ]] && return 2 # Go and try non-api route
-  jq ".sha=${sha}|.message=\"\"" "${api_payload}" > "${api_json_template}"
+  jq ".sha=\"${sha}\"|.message=\"\"" "${api_payload}" > "${api_json_template}"
 } 2>"${GIBBERISH_DIR}/api.log"; export -f GIBBERISH_push_api
