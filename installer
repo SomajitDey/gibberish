@@ -50,14 +50,15 @@ if [[ "${protocol}" == "file" ]] || [[ "${uri}" == "${protocol}" ]]; then
     echo -e \\n"NFS is not very secure. If you want encryption, please provide a passphrase. Otherwise, simply press ENTER"
     read -ep 'Passphrase: ' pass
   else
-    unset pass
+    pass="GiBBERISh"
   fi
 else
   protocol="https" # Because https will be allowed by every firewall, unlike ssh://
   echo -e \\n'Using https:// for git-push'
   localhost="false"
 
-  echo -e "\nEnter your ${uri%%\/*} credentials below. GIBBERISh will use this during git-push."
+  domain="${uri%%\/*}"
+  echo -e "\nEnter your ${domain} credentials below. GIBBERISh will use this during git-push."
   read -ep 'Username: ' uid
   read -ep 'Passwd/PAT: ' pass
   tput cuu1; tput ed; echo 'Got your passwd.'
@@ -96,7 +97,7 @@ GIBBERISH_filesys
 rm -rf "${GIBBERISH_DIR}" # Clean previous installation
 mkdir -p "${GIBBERISH_DIR}"
 
-[[ -n "${pass}" ]] && echo "${pass}" > "${patfile}"
+echo "${pass}" > "${patfile}"
 
 git clone --quiet "${fetch_url}" "${incoming_dir}" || { echo -e \\n'Git-clone failed, exiting'; exit 1;}
 

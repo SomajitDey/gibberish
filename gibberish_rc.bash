@@ -27,7 +27,6 @@ GIBBERISH_filesys(){
   export prelaunch_pwd="${PWD}"
   export prelaunch_oldpwd="${OLDPWD}"
   export promptfile_abs="${GIBBERISH_DIR}/prompt.tmp" # Abs path
-  export promptfile_rel="prompt.txt" # Relative path
   export push_error_log="${GIBBERISH_DIR}/push_error.log"
   export pull_error_log="${GIBBERISH_DIR}/pull_error.log"
   export fetch_error_log="${GIBBERISH_DIR}/fetch_error.log"
@@ -54,15 +53,11 @@ GIBBERISH_fetchd(){
         # When commit message is empty, update worktree only
         # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
         git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
-        if [[ -n "${pat}" ]]; then
-          # --ignore-mdc-error is to make things compatible with older versions of GPG
-          # --passphrase-fd is used instead of --passphrase "$pat" to avoid GPG-agent problems in older versions of GPG
-          gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 -d "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
-            || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
-            && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
-        else
-          cat "./${iofile}" > "${incoming}"
-        fi
+        # --ignore-mdc-error is to make things compatible with older versions of GPG
+        # --passphrase-fd is used instead of --passphrase "$pat" to avoid GPG-agent problems in older versions of GPG
+        gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 -d "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
+          || (echo -e \\n'GIBBERISH: Decryption failed. Passphrase/access-token mismatch' \
+          && GIBBERISH_hook_commit 'echo -e \\nPassphrase/access-token mismatch with remote. Use: exit')
       else
         # Execute code supplied as commit message. This commit won't contain any other code
         # All hooks (such as client-side file download) must remember that here PWD is ${incoming_dir}
@@ -112,16 +107,12 @@ GIBBERISH_commit(){
   [[ -e "${outgoing}" ]] || return # Check existence to decide whether to wait for lock at all
   ( flock --exclusive 200; cd "${outgoing_dir}"
   [[ -e "${outgoing}" ]] || exit # Check existence after lock has been acquired
-  if [[ -n "${pat}" ]]; then
-    flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
-    rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
-    gpg --batch --quiet --armor --output "./${iofile}" --passphrase-fd 3 -c --cipher-algo AES256 "${snapshot}" 3<><(echo "${pat}")
-  else
-    flock --exclusive "${write_lock}" mv -f "${outgoing}" "./${iofile}"
-  fi
+  flock --exclusive "${write_lock}" mv -f "${outgoing}" "${snapshot}"
+  rm -f "./${iofile}" # Otherwise gpg complains that file exists and fails
+  gpg --batch --quiet --armor --output "./${iofile}" --passphrase-fd 3 -c --cipher-algo CAST5 "${snapshot}" 3<><(echo "${pat}")
 
-  # Commit the current prompt, if any, through $promptfile_rel inside repo. Client-side execution of this line is inconsequential
-  mv -f "${promptfile_abs}" "./${promptfile_rel}" 2>/dev/null # || cat /dev/null > "./${promptfile_rel}"
+  # Commit the current prompt, if any, by appending below PGP block. Client-side execution of this line is inconsequential
+  [[ -e "${promptfile_abs}" ]] && cat "${promptfile_abs}" >> "./${iofile}"
 
   git add .
   git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m ''
@@ -194,7 +185,7 @@ GIBBERISH_prelaunch(){
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
   
-  export pat="${GIBBERISH_pat:="$(cat "${patfile}" 2>/dev/null)"}"
+  export pat="${GIBBERISH_pat:="$(cat "${patfile}")"}"
 
   # Launch fetch daemon
   GIBBERISH_fetchd
@@ -234,7 +225,7 @@ gibberish-server(){
   PS1="GiBBERISh-server:\w$ "
   PROMPT_COMMAND="store_prompt > ${promptfile_abs}" # Save the current prompt everytime an fg process exits
   # Following is a work-around for PS0=$(code) for compatibility with older bash which doesnt support PS0
-  pre-run(){ echo -n > ${promptfile_abs} ; tput cuu1 ; tput ed ;} 2>/dev/null # After cmd is read and b4 execution begins
+  pre-run(){ echo > ${promptfile_abs} ; tput cuu1 ; tput ed ;} 2>/dev/null # After cmd is read and b4 execution begins
   # Empties the promptfile because an fg process is just about to start
   # tputs are to avoid showing the commandline twice to user@client
   '
@@ -250,6 +241,7 @@ gibberish-server(){
 
 gibberish(){
   # Config specific initialization
+  export GIBBERISH_pat= # This variable is useful for server only. Hence, nullified for client.
   export fetch_branch="client"
   export push_branch="server"
 
@@ -408,6 +400,5 @@ GIBBERISH_bring(){
 GIBBERISH_prompt(){
   # Brief: Show current server prompt if there is no active fg process
   # Meant to be used by client only
-  local promptfile="${incoming_dir}/${promptfile_rel}"
-  cat "${promptfile}" # Show server prompt
+  tail -n1 "${incoming_dir}/${iofile}" # Show server prompt
 }; export -f GIBBERISH_prompt
