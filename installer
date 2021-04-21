@@ -11,6 +11,7 @@
 export rcfile='gibberish_rc.bash'
 
 command -v git &>/dev/null || { echo 'Install git' ; exit 1;}
+command -v curl &>/dev/null || { echo 'Install curl' ; exit 1;}
 command -v flock &>/dev/null || { echo 'Install flock' ; exit 1;}
 command -v gpg &>/dev/null || { echo 'Install gpg' ; exit 1;}
 
