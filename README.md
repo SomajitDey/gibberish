@@ -1,4 +1,12 @@
-![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4673010.svg) 
+![Generic badge](https://img.shields.io/badge/TL;DR-Free and secure remote access with NAT & firewall traversal, using Git as backend-blue.svg) 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4673010.svg)](https://doi.org/10.5281/zenodo.4673010) 
+
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-green.svg)](https://www.gnu.org/software/bash/) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![Generic badge](https://img.shields.io/badge/Dependency-Git, Bash, cURL-blue.svg) ![Generic badge](https://img.shields.io/badge/Tested on-Ubuntu 12.04, 16.04, 20.04 and Debian 10-blue.svg) 
+
+[![Generic badge](https://img.shields.io/badge/Repository-SomajitDey/gibberish-blue.svg)](https://github.com/SomajitDey/gibberish) [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/SomajitDey/gibberish/graphs/commit-activity) [![Maintaner](https://img.shields.io/badge/maintainer-Somajit Dey-blue)](https://www.researchgate.net/profile/Somajit-Dey)
+
+
 
 # What is GiBBERISh
 
@@ -33,16 +41,16 @@ Whenever the user enters a command at client, the GiBBERISh script encrypts it w
 
 **Note**: Because only encrypted text goes to GitHub, the public cannot see what commands the user is running, or their outputs.
 
-# Drawback:
+# Latency:
 
-Because of the dependence on an online Git repository, the time between entering a command and getting its output back is not insignificant. From multiple measurements with upstream at GitHub, I found the latency varies between 6 to 9 seconds.
+Because of the dependence on an online Git repository, the time between entering a command and getting its output back is not insignificant. This is because `git-push` is slow. From multiple measurements with upstream at GitHub, I found the latency varies between 6 to 9 seconds. However, using GitHub's REST API, the `git-push` can be avoided and [performance improved](https://gist.github.com/SomajitDey/3a438669bd00bdf3b80e4471c2c41a98). When using the API, the latency decreases to 3-4 seconds.
 # Features:
 
 1. Doesn't require a public IP address. Both machines can be behind multiple NATs.
 2. Doesn't care about firewalls and blocked ports.
 3. Secure (everything public is encrypted with your password / access-token).
-4. Interactive.
-5. Secure (GPG-encrypted) file transfer from client to server and vice-versa.
+4. Interactive. Unlike SSH, however, the raw user input is not streamed to server. The user can type, edit, erase as many times as necessary, with zero-lag, before pressing the `Enter` key.
+5. Secure (encryption using AES256) file transfer from client to server and vice-versa.
 6. Easy and fast switching between local and remote environments without interrupting the remote session in any way. See *brb* in the *Keywords* section below.
 7. Relays user's keyboard-generated signals, such as Ctrl-c; Ctrl-z to server.
 8. Monitorability and overrides: If you grant someone else access to your local machine, for remote diagnostics for example, you can see all the commands she is executing from your terminal. You can also override those executions with Ctrl-c, Ctrl-z, Ctrl-\ etc., if necessary.
@@ -56,7 +64,11 @@ Because of the dependence on an online Git repository, the time between entering
 
 # How to install / run
 
-First, [create a dedicated repository](https://docs.github.com/en/github/getting-started-with-github/create-a-repo) at any free Git hosting service such as https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/. The repository can be completely empty, i.e. without any commits. **Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for your account.
+First, [create a dedicated repository](https://docs.github.com/en/github/getting-started-with-github/create-a-repo) at any free Git hosting service such as https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/. I recommend using GitHub, as GiBBERISh can speed itself up using their content API. The repository can be completely empty, i.e. without any commits. 
+
+**Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for your account. This makes GiBBERISh even more secure.
+
+**Tip:** If you have created the repository at GitHub, then install [`jq`](https://stedolan.github.io/jq/download/) and `base64` to experience the lowest latency (3-4s) with GiBBERISh. However, you can also run GiBBERISh without these, albeit with double latency.
 
 At the Linux machine that you want to use as server, run the *installer* script (no superuser or admin privilege required): 
 
@@ -79,8 +91,6 @@ To access the remote server, simply run:
 ```bash
 gibberish
 ```
-
-After 6-9 seconds, you should get the server's command prompt.
 
 **Note**: GiBBERISh allows, possibly unnecessarily, upstream repositories that are on your local disk or NFS.
 
@@ -229,7 +239,13 @@ Such commit-message commands, meant for the parallel shell, are mostly kill(@ser
 
 In contrast to SSH, GiBBERISh does not stream every keystroke made by the user to the server in real-time. Rather, it first lets the user enter the complete command, then reads it, checks for keywords, and only then decides what to do. If the command-line is not a keyword, it is pushed to the server as is for execution. To generate signals at server from particular key-sequences entered at the client, key-binding is done at the client-terminal such that it commits and pushes the appropriate hook to be executed by the parallel shell at server, whenever those keys are pressed by the user.
 
-*Addition towards user-friendliness*: Lately, I have added another file to the repository that stores the current prompt as visible at the server-side terminal. When a foreground process is running in that terminal, this prompt-file becomes empty. Client fetches and checks out this file to remain informed about the current state of the dynamic server-side prompt, and displays the same at the client-side terminal as required. This feature is strictly designed for adding to the user experience and is in no way a necessary part of the GiBBERISh engine, which is described in the previous paragraphs.
+The current prompt at the server-side terminal is appended to the text file in the repository below the PGP message block containing the output of Bash@server. When a foreground process is running in that terminal, only a newline is appended instead. Client extracts this appendix to remain informed about the current state of the dynamic server-side prompt, and displays the same at the client-side terminal as required. This feature is strictly designed for adding to the user experience and is in no way a necessary part of the GiBBERISh engine.
+
+[*Strategy to decrease latency*](https://gist.github.com/SomajitDey/3a438669bd00bdf3b80e4471c2c41a98)
+
+`git-push` is the most obvious way to transfer a file to upstream. However, it is slow (~3s). Using a file-update API, if provided by the upstream host, can make file-transfer faster (~1s). GiBBERISh uses the REST [API](https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents) of GitHub for this purpose. The speed up is significant:
+
+Using API: 3-4s | Using git-push: 6-9s
 
 # Bug-reports, Feature-requests, Comments
 
@@ -247,9 +263,14 @@ You are free to modify and distribute the code under GPL-3.0-or-later <https://w
 
 *GiBBERISh comes with ABSOLUTELY NO WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Use it at your own risk. The developer or copyright holder won't be liable for any damage done by or done using this software.*
 
+# Acknowledgements
+
+Soumalya Bhowmik contributed by testing this software thoroughly.
+
+Thanks to [Patrick Bedat](https://pbedat.de/) and Seth Kenlon for encouragement and discussions.
+
 # Future directions
 
 https://github.com/SomajitDey/gibberish/projects/1
-
 
 
