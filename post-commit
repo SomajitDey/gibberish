@@ -4,13 +4,15 @@
 
 flock -n . -c ''|| exit 1
 
+stash="${GIBBERISH_DIR}/stash" # Use this instead of git-stash simply to avoid conflicts
+
 until (date;git push --quiet origin "${push_branch}") &>>"${push_error_log}"; do
   # The grand sync: Let's make it conflict-less
-  commit_msg="$(git log -1 --pretty=%B)" 
-  git reset --quiet "origin/${push_branch}"
-  git stash --quiet
+  commit_msg="$(git log -1 --pretty=%B)"
+  mv -f "${iofile}" "${stash}"
+  git reset --quiet --hard "origin/${push_branch}"
   until (date;git pull --ff-only --quiet origin "${push_branch}") &>>"${pull_error_log}"; do :;done
-  git stash pop --quiet 2>/dev/null
+  mv -f "${stash}" "${iofile}"
   git add -u
   # Flock makes sure post-commit hook is not called following the below commit
   flock -x . git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m "${commit_msg}"

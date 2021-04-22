@@ -177,7 +177,6 @@ GIBBERISH_prelaunch(){
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  git stash clear 2>/dev/null
   git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
   git pull --ff-only --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
     { echo "Pull failed: ${push_branch}. Log: ${pull_error_log}. Check network connection." >&2 ; exit 1;}
@@ -431,7 +430,7 @@ GIBBERISH_push_api(){
   fi
 
   # Connecting to REST API-endpoint
-  local sha="$(xargs curl -sf < "${api_options_file}" | jq -r '.content.sha')"
+  local sha="$(xargs curl -sf --max-time 3 < "${api_options_file}" | jq -r '.content.sha')"
 
   if [[ -z "${sha}" ]]; then
     rm -f "${api_payload}" # Once api push fails in a session no need to risk retrying api
