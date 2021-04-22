@@ -7,10 +7,10 @@ flock -n . -c ''|| exit 1
 until (date;git push --quiet origin "${push_branch}") &>>"${push_error_log}"; do
   # The grand sync: Let's make it conflict-less
   commit_msg="$(git log -1 --pretty=%B)" 
-  git reset "origin/${push_branch}"
+  git reset --quiet "origin/${push_branch}"
   git stash --quiet
   until (date;git pull --ff-only --quiet origin "${push_branch}") &>>"${pull_error_log}"; do :;done
-  git stash pop --quiet
+  git stash pop --quiet 2>/dev/null
   git add -u
   # Flock makes sure post-commit hook is not called following the below commit
   flock -x . git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m "${commit_msg}"

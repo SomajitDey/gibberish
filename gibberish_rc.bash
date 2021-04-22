@@ -51,12 +51,10 @@ GIBBERISH_fetchd(){
       # Executable code (hook) can be passed through commit message.
       # Use-case: relay interrupt signals raised by user; file transfer in background.
       # Commit message should be an empty string otherwise
-      commit_msg="$(git log -1 --pretty=%B "${commit}")"
+      local commit_msg="$(git log -1 --pretty=%B "${commit}")"
       [[ -e "${brbtag}" ]] && return
       if [[ -z "${commit_msg}" ]]; then
-        # When commit message is empty, update worktree only
-        # git restore --quiet --source="${commit}" --worktree -- . # Use this for recent Git versions only
-        git checkout --quiet "${commit}" -- . # Not same as git-restore above, this changes the index too
+        git checkout --quiet "${commit}" -- . # Not same as git-restore, this changes the index too
         # --ignore-mdc-error is to make things compatible with older versions of GPG
         # --passphrase-fd is used instead of --passphrase "$pat" to avoid GPG-agent problems in older versions of GPG
         gpg --batch --quiet --ignore-mdc-error --passphrase-fd 3 -d "./${iofile}" > "${incoming}" 2>/dev/null 3<><(echo "${pat}") \
