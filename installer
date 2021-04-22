@@ -121,7 +121,7 @@ git checkout --quiet "${talkto}" &>/dev/null || git checkout --quiet -b "${talkt
 git commit --allow-empty -m ':'; git push --quiet origin "${talkto}") || \
 { echo -e \\n'Oops, something failed. Reinstall with correct credentials.'; exit 1;}
 
-ln "${code_dir}/post-commit" "${outgoing_dir}/.git/hooks/post-commit" || \
+cp "${code_dir}/post-commit" "${outgoing_dir}/.git/hooks/post-commit" || \
   { echo -e \\n'Missing post-commit hook. Reinstall with proper package' ; exit 1;}
 
 if [[ "${domain}" == "github.com" ]]; then

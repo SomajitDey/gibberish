@@ -118,8 +118,7 @@ GIBBERISH_commit(){
   # Commit the current prompt, if any, by appending below PGP block. Client-side execution of this line is inconsequential
   [[ -e "${promptfile_abs}" ]] && cat "${promptfile_abs}" >> "./${iofile}"
 
-  git add "${iofile}"
-  GIBBERISH_push_api || git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m ''
+  GIBBERISH_push_api || git commit --quiet --no-gpg-sign --allow-empty --allow-empty-message -m '' "${iofile}"
   # Allow empty commit above in case io.txt is same as previous
   ) 200>"${commit_lock}"
 }; export -f GIBBERISH_commit
@@ -174,27 +173,26 @@ GIBBERISH_prelaunch(){
 
   # Sync/update repos:
   cd "${incoming_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
-  # git restore --quiet "./${iofile}" 2>/dev/null # Use for recent Git versions only
-  git checkout --quiet "./${iofile}" 2>/dev/null # Same as git-restore above
+  git checkout --quiet HEAD -- . # Checkout worktree and index from HEAD
   git pull --ff-only --quiet origin "${fetch_branch}" 2>"${fetch_error_log}" || \
-    { echo "Pull failed: ${fetch_branch}. Check network connection." >&2 ; exit 1;}
+    { echo "Pull failed: ${fetch_branch}. Log: ${fetch_error_log}. Check network connection." >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || until git tag last_read &>/dev/null; do git tag -d last_read &>/dev/null; done # Force create tag
 
   cd "${outgoing_dir}" || { echo 'Broken installation. Rerun installer' >&2 ; exit 1;}
+  git stash clear 2>/dev/null
   git reset --hard --quiet "origin/${push_branch}" # Clear all unpushed commits from previous session
-  git pull --rebase --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
-    { echo "Pull failed: ${push_branch}. Check network connection." >&2 ; exit 1;}
+  git pull --ff-only --quiet origin "${push_branch}" 2>"${pull_error_log}" || \
+    { echo "Pull failed: ${push_branch}. Log: ${pull_error_log}. Check network connection." >&2 ; exit 1;}
   [[ -e "${brbtag}" ]] || \
     { echo "Checking credentials...please wait";git push --quiet origin "${push_branch}" 2>"${push_error_log}";} || \
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   if [[ -e "${api_json_template}" ]] && (command -v jq && command -v base64) &>/dev/null; then
-    export api="true"
     local sha="\"$(git cat-file -p ${push_branch}^{tree} | grep --line-buffered "${iofile}$" | awk '{ print $3 }')\""
     cp "${api_json_template}" "${api_payload}"
-    jq ".sha=${sha}|.message=\"\"" "${api_payload}" > "${api_json_template}"
+    jq ".sha=${sha}|.message=\"\"|.content=\"$(cat ./${iofile} | base64)\"" "${api_payload}" > "${api_json_template}"
   else
-    export api="false"
+    rm -f "${api_payload}"
   fi
 
   rm -f "${incoming}" "${outgoing}"; mkfifo "${incoming}"
@@ -407,8 +405,8 @@ GIBBERISH_bring(){
   local file_at_server="$1"
   local filename="${file_at_server##*/}"
   if GIBBERISH_UL "${file_at_server}"; then
-    GIBBERISH_hook_commit "url=$(awk NR==1 "$file_transfer_url"); filename='${filename}';
-    GIBBERISH_DL '${file_at_server}' '${path_at_client}'"
+    local url="$(awk NR==1 "${file_transfer_url}")"
+    GIBBERISH_hook_commit "url='${url}'; filename='${filename}'; GIBBERISH_DL '${file_at_server}' '${path_at_client}'"
   else
     echo -e \\n"FAILED."
   fi
@@ -422,15 +420,27 @@ GIBBERISH_prompt(){
 
 GIBBERISH_push_api(){
   # Ref: https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
-  if [[ "${api}" != "true" ]];then return 1; fi
-  if [[ -n "${1}" ]];then
-    local message="\"${1}\""
+  local commit_msg="${1}"
+  [[ -e "${api_payload}" ]] || return 1
+  cd "${outgoing_dir}" # Just for neatness and safety
+
+  if [[ -n "${commit_msg}" ]];then
+    local message="\"${commit_msg}\""
     jq ".message=${message}" "${api_json_template}" > "${api_payload}"
   else
     local content="\"$(cat ${outgoing_dir}/${iofile} | base64)\""
     jq ".content=${content}" "${api_json_template}" > "${api_payload}"
   fi
+
+  # Connecting to REST API-endpoint
   local sha="$(xargs curl -sf < "${api_options_file}" | jq -r '.content.sha')"
-  [[ -z "${sha}" ]] && return 2 # Go and try non-api route
-  jq ".sha=\"${sha}\"|.message=\"\"" "${api_payload}" > "${api_json_template}"
+
+  if [[ -z "${sha}" ]]; then
+    rm -f "${api_payload}" # Once api push fails in a session no need to risk retrying api
+    return 2 # Go and try non-api route
+  else
+    git checkout --quiet HEAD -- . # Just to keep the local repo clean albeit outdated; maybe unneccessary
+    jq ".sha=\"${sha}\"|.message=\"\"" "${api_payload}" > "${api_json_template}"
+    return 0
+  fi
 } 2>"${GIBBERISH_DIR}/api.log"; export -f GIBBERISH_push_api
