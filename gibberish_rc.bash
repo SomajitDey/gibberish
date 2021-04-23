@@ -185,9 +185,8 @@ GIBBERISH_prelaunch(){
     { echo "Push failed: ${push_branch}. Did you change password? If so, reinstall." >&2 ; exit 1;} # Check if PAT is still ok
 
   if [[ -e "${api_json_template}" ]] && (command -v jq && command -v base64) &>/dev/null; then
-    local sha="\"$(git cat-file -p ${push_branch}^{tree} | grep --line-buffered "${iofile}$" | awk '{ print $3 }')\""
     cp "${api_json_template}" "${api_payload}"
-    jq ".sha=${sha}|.message=\"\"|.content=\"$(cat ./${iofile} | base64)\"" "${api_payload}" > "${api_json_template}"
+    GIBBERISH_prep_api
   else
     rm -f "${api_payload}"
   fi
@@ -203,7 +202,7 @@ GIBBERISH_prelaunch(){
   trap 'pkill -TERM -P "${BASHPID}"; echo -n > "${incoming}"' exit
   # INT makes bash exit fg loops; TERM exits bg loops; echo -n sends EOF to any proc listening to pipe
   
-  echo "Configuration OK"
+  echo -e "Configuration OK"\\n
   return
 }; export -f GIBBERISH_prelaunch
 
@@ -225,7 +224,7 @@ gibberish-server(){
 
   echo "This server needs to run in foreground."
   echo "To exit, simply close the terminal window."
-  echo "Command execution in this session is recorded below...Use Ctrl-C etc. to override"
+  echo -e \\n"Command execution in this session is recorded below...Use Ctrl-C etc. to override"\\n
   export OLDPWD="/tmp"; cd "${HOME}" # So that the client is at the home directory on first connection to server 
 
   # The following function is a workround for ${PS1@P} for compatibility with older bash which doesnt support @P
@@ -265,11 +264,11 @@ gibberish(){
   { GIBBERISH_read &} 2>/dev/null # Redirection of stderr is so that pid of bg job is not shown in tty
 
   if [[ -e "${brbtag}" ]] ; then
-    echo 'Welcome back to GIBBERISH-server'
+    echo -e 'Welcome back to GIBBERISH-server'\\n
     GIBBERISH_prompt
     rm -f  "${brbtag}"
   else
-    echo -e \\n"Connecting to server..."\\n
+    echo -e "Connecting to server..."\\n
     echo 'pre-run ; echo "Welcome to GIBBERISH-server"' > "${outgoing}" && GIBBERISH_commit
   fi
 
@@ -415,6 +414,13 @@ GIBBERISH_prompt(){
   tail -n1 "${incoming_dir}/${iofile}" # Show server prompt
 }; export -f GIBBERISH_prompt
 
+GIBBERISH_prep_api(){
+  [[ -e "${api_payload}" ]] || return 1
+  cd "${outgoing_dir}" # Just for neatness and safety
+  local sha="\"$(git cat-file -p ${push_branch}^{tree} | grep --line-buffered "${iofile}$" | awk '{ print $3 }')\""
+  jq ".sha=${sha}|.message=\"\"|.content=\"$(cat ./${iofile} | base64)\"" "${api_payload}" > "${api_json_template}"
+}; export -f GIBBERISH_prep_api
+
 GIBBERISH_push_api(){
   # Ref: https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
   local commit_msg="${1}"
@@ -433,7 +439,7 @@ GIBBERISH_push_api(){
   local sha="$(xargs curl -sf --max-time 3 < "${api_options_file}" | jq -r '.content.sha')"
 
   if [[ -z "${sha}" ]]; then
-    rm -f "${api_payload}" # Once api push fails in a session no need to risk retrying api
+#    rm -f "${api_payload}" # Once api push fails in a session no need to risk retrying api
     return 2 # Go and try non-api route
   else
     git checkout --quiet HEAD -- . # Just to keep the local repo clean albeit outdated; maybe unneccessary

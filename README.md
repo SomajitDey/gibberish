@@ -66,7 +66,7 @@ Because of the dependence on an online Git repository, the time between entering
 
 First, [create a dedicated repository](https://docs.github.com/en/github/getting-started-with-github/create-a-repo) at any free Git hosting service such as https://github.com/, https://gitlab.com/, https://bitbucket.org/ or https://sourceforge.net/. I recommend using GitHub, as GiBBERISh can speed itself up using their content API. The repository can be completely empty, i.e. without any commits. 
 
-**Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for your account. This makes GiBBERISh even more secure.
+**Tip**: Also [generate a personal access-token (PAT)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) with write-access to your repository. This makes GiBBERISh even more secure.
 
 **Tip:** If you have created the repository at GitHub, then install [`jq`](https://stedolan.github.io/jq/download/) and `base64` to experience the lowest latency (3-4s) with GiBBERISh. However, you can also run GiBBERISh without these, albeit with double latency.
 
